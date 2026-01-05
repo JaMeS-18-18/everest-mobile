@@ -1,0 +1,687 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View } from '../types';
+import api from '../api';
+
+interface ImageFile {
+  filename: string;
+  url: string;
+  mimetype: string;
+  size: number;
+}
+
+interface Assignment {
+  _id: string;
+  name: string;
+  images: ImageFile[];
+}
+
+interface GroupInfo {
+  _id: string;
+  name: string;
+}
+
+interface Homework {
+  _id: string;
+  description: string;
+  deadline: string;
+  category: string;
+  link?: string;
+  groupId: GroupInfo | null;
+  studentId: string | null;
+  assignmentType: 'group' | 'individual';
+  assignments: Assignment[];
+  status: 'new' | 'in_progress' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Group {
+  _id: string;
+  name: string;
+}
+
+interface Student {
+  _id: string;
+  fullName: string;
+  groupId: string;
+}
+
+interface TaskItem {
+  id: string;
+  title: string;
+  files: File[];
+}
+
+interface TasksViewProps {
+  navigate: (view: View, id?: string) => void;
+}
+
+const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([{ id: 'task-1', title: '', files: [] }]);
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [link, setLink] = useState('');
+  const [assignmentType, setAssignmentType] = useState<'group' | 'individual'>('group');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    fetchHomeworks();
+    fetchGroups();
+  }, []);
+
+  useEffect(() => {
+    if (assignmentType === 'individual') {
+      fetchAllStudents();
+    }
+  }, [assignmentType]);
+
+  const fetchHomeworks = async () => {
+    try {
+      const response = await api.get('/homework');
+      const data = response.data;
+      
+      if (data.success) {
+        setHomeworks(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch homeworks');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch homeworks');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const response = await api.get('/groups');
+      if (response.data.success) {
+        setGroups(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch groups:', err);
+    }
+  };
+
+  const fetchStudentsByGroup = async (groupId: string) => {
+    try {
+      const response = await api.get(`/students?groupId=${groupId}`);
+      if (response.data.success) {
+        setStudents(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+    }
+  };
+
+  const fetchAllStudents = async () => {
+    try {
+      const response = await api.get('/students');
+      if (response.data.success) {
+        setStudents(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+    }
+  };
+
+  const addTask = () => {
+    const newId = Date.now().toString();
+    setTasks([...tasks, { id: newId, title: '', files: [] }]);
+  };
+
+  const removeTask = (id: string) => {
+    if (tasks.length > 1) {
+      setTasks(tasks.filter(t => t.id !== id));
+    }
+  };
+
+  const updateTaskTitle = (id: string, title: string) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, title } : t));
+  };
+
+  const addTaskFiles = (id: string, newFiles: FileList | null) => {
+    if (!newFiles) return;
+    setTasks(tasks.map(t => t.id === id ? { ...t, files: [...t.files, ...Array.from(newFiles)] } : t));
+  };
+
+  const removeTaskFile = (taskId: string, fileIndex: number) => {
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, files: t.files.filter((_, i) => i !== fileIndex) } : t));
+  };
+
+  const resetModal = () => {
+    setTasks([{ id: 'task-' + Date.now(), title: '', files: [] }]);
+    setDescription('');
+    setDeadline('');
+    setLink('');
+    setAssignmentType('group');
+    setSelectedGroupId('');
+    setSelectedStudentIds([]);
+  };
+
+  const handleCreateHomework = async () => {
+    const validTasks = tasks.filter(t => t.title.trim());
+    if (validTasks.length === 0) {
+      alert('Please add at least one task with a title');
+      return;
+    }
+
+    if (assignmentType === 'group' && !selectedGroupId) {
+      alert('Please select a group');
+      return;
+    }
+
+    if (assignmentType === 'individual' && selectedStudentIds.length === 0) {
+      alert('Please select at least one student');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('description', description);
+      formData.append('deadline', deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+      formData.append('category', 'DOCUMENT');
+      formData.append('assignmentType', assignmentType);
+      
+      if (link) {
+        formData.append('link', link);
+      }
+
+      if (assignmentType === 'group') {
+        formData.append('groupId', selectedGroupId);
+      } else {
+        selectedStudentIds.forEach(id => {
+          formData.append('studentIds[]', String(id));
+        });
+      }
+
+      validTasks.forEach((task, index) => {
+        formData.append(`assignments[${index}][name]`, task.title);
+        task.files.forEach((file, fileIndex) => {
+          formData.append(`assignments[${index}][files]`, file);
+        });
+      });
+
+      const response = await api.post('/homework', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        setIsModalOpen(false);
+        resetModal();
+        fetchHomeworks();
+      } else {
+        throw new Error(response.data.message || 'Failed to create homework');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create homework');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'new':
+        return { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600', label: 'New' };
+      case 'in_progress':
+        return { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600', label: 'In Progress' };
+      case 'completed':
+        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', label: 'Completed' };
+      default:
+        return { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600', label: status };
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'PHOTO':
+        return 'photo_library';
+      case 'VIDEO':
+        return 'videocam';
+      case 'AUDIO':
+        return 'mic';
+      case 'DOCUMENT':
+        return 'description';
+      default:
+        return 'assignment';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-4">
+        <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
+        <p className="text-red-500 text-center">{error}</p>
+        <button 
+          onClick={fetchHomeworks}
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 pt-12">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-primary">{user.fullName || 'Teacher'}</span>
+          <button 
+            onClick={() => navigate('SETTINGS')}
+            className="w-10 h-10 rounded-full ring-2 ring-white dark:ring-slate-900 overflow-hidden"
+          >
+            <img src="https://picsum.photos/seed/teacher/100/100" className="w-full h-full object-cover" alt="Profile" />
+          </button>
+        </div>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-[32px] font-bold tracking-tight">Tasks</h1>
+        </div>
+      </div>
+
+      <div className="px-4 pb-24 space-y-4">
+        {homeworks.length === 0 ? (
+          <div className="text-center py-12 text-text-secondary-light">
+            <span className="material-symbols-outlined text-4xl mb-2">assignment</span>
+            <p>No tasks found</p>
+          </div>
+        ) : (
+          homeworks.map((homework) => {
+            const statusConfig = getStatusConfig(homework.status);
+            const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
+
+            return (
+              <div 
+                key={homework._id}
+                onClick={() => navigate('TASK_DETAIL', homework._id)}
+                className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className={`w-12 h-12 rounded-xl ${statusConfig.bg} ${statusConfig.text} flex items-center justify-center shrink-0`}>
+                    <span className="material-symbols-outlined">{getCategoryIcon(homework.category)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusConfig.bg} ${statusConfig.text}`}>
+                        {statusConfig.label}
+                      </span>
+                      {homework.groupId && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 capitalize">
+                          {homework.groupId.name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-semibold truncate">{homework.description}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Deadline: {formatDate(homework.deadline)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Assignments Preview */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {homework.assignments.map((assignment) => (
+                    <span 
+                      key={assignment._id}
+                      className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium"
+                    >
+                      {assignment.name} ({assignment.images.length})
+                    </span>
+                  ))}
+                </div>
+
+                {/* Images Preview */}
+                {totalImages > 0 && (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                    {homework.assignments.flatMap(a => a.images).slice(0, 4).map((img, idx) => (
+                      <img 
+                        key={idx}
+                        src={img.url}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover shrink-0"
+                      />
+                    ))}
+                    {totalImages > 4 && (
+                      <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-slate-500">+{totalImages - 4}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {homework.link && (
+                  <a 
+                    href={homework.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-primary text-xs font-medium mt-3 hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-sm">link</span>
+                    View Link
+                  </a>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* FAB Button */}
+      <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto pointer-events-none z-40">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="absolute bottom-0 right-4 w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-xl hover:bg-primary/90 transition-all hover:scale-105 pointer-events-auto"
+        >
+          <span className="material-symbols-outlined text-3xl">add</span>
+        </button>
+      </div>
+
+      {/* Create Homework Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <h2 className="text-lg font-bold">Add Homework</h2>
+              <button 
+                onClick={() => {}}
+                className="text-primary font-semibold text-sm"
+              >
+                {/* Save Draft */}
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* Tasks Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold">Tasks ({tasks.length})</h3>
+                  <button 
+                    onClick={addTask}
+                    className="flex items-center gap-1 text-primary font-semibold text-sm px-3 py-1.5 rounded-lg border border-primary hover:bg-primary/5"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Add Task
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {tasks.map((task, index) => (
+                    <div 
+                      key={task.id}
+                      className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
+                        {tasks.length > 1 && (
+                          <button 
+                            onClick={() => removeTask(task.id)}
+                            className="text-slate-400 hover:text-red-500"
+                          >
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Title *"
+                        value={task.title}
+                        onChange={(e) => updateTaskTitle(task.id, e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent mb-2 focus:outline-none focus:border-primary"
+                      />
+                      <input
+                        type="file"
+                        multiple
+                        ref={el => fileInputRefs.current[task.id] = el}
+                        onChange={(e) => {
+                          addTaskFiles(task.id, e.target.files);
+                          e.target.value = '';
+                        }}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx"
+                      />
+                      <button
+                        onClick={() => fileInputRefs.current[task.id]?.click()}
+                        className="w-full py-3 border-2 border-dashed border-primary/30 rounded-lg text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
+                      >
+                        <span className="material-symbols-outlined">upload_file</span>
+                        Upload Files
+                      </button>
+                      {/* Uploaded files preview */}
+                      {task.files.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {task.files.map((file, fileIndex) => (
+                            <div key={fileIndex} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="material-symbols-outlined text-sm text-primary">
+                                  {file.type.startsWith('image/') ? 'image' : 'description'}
+                                </span>
+                                <span className="text-xs truncate">{file.name}</span>
+                              </div>
+                              <button
+                                onClick={() => removeTaskFile(task.id, fileIndex)}
+                                className="text-red-500 hover:text-red-600 shrink-0"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Common Settings */}
+              <div>
+                <h3 className="text-lg font-bold mb-1">Common Settings</h3>
+                <p className="text-sm text-slate-500 mb-3">Applied to all tasks above</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Description <span className="text-slate-400">(Optional)</span>
+                    </label>
+                    <textarea
+                      placeholder="Add detailed instructions..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Deadline <span className="text-slate-400">(Optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Link <span className="text-slate-400">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="url"
+                        placeholder="https://"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      />
+                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">link</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipients */}
+              <div>
+                <h3 className="text-lg font-bold mb-3">Recipients</h3>
+                
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      checked={assignmentType === 'group'}
+                      onChange={() => setAssignmentType('group')}
+                      className="w-5 h-5 text-primary"
+                    />
+                    <span className="font-medium">Entire Group</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      checked={assignmentType === 'individual'}
+                      onChange={() => setAssignmentType('individual')}
+                      className="w-5 h-5 text-primary"
+                    />
+                    <span className="font-medium">Individual Students</span>
+                  </label>
+                </div>
+
+                {assignmentType === 'group' && (
+                  <select
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Group</option>
+                    {groups.map(group => (
+                      <option key={group._id} value={group._id}>{group.name}</option>
+                    ))}
+                  </select>
+                )}
+
+                {assignmentType === 'individual' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">
+                        {selectedStudentIds.length} student{selectedStudentIds.length !== 1 ? 's' : ''} selected
+                      </span>
+                      {selectedStudentIds.length > 0 && (
+                        <button
+                          onClick={() => setSelectedStudentIds([])}
+                          className="text-xs text-red-500 hover:text-red-600"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                      {students.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500 text-sm">
+                          No students found
+                        </div>
+                      ) : (
+                        students.map(student => (
+                          <label 
+                            key={student._id} 
+                            className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStudentIds.includes(String(student._id))}
+                              onChange={(e) => {
+                                const studentId = String(student._id);
+                                if (e.target.checked) {
+                                  setSelectedStudentIds([...selectedStudentIds, studentId]);
+                                } else {
+                                  setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
+                                }
+                              }}
+                              className="w-5 h-5 text-primary rounded border-slate-300"
+                            />
+                            <span className="font-medium">{student.fullName}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetModal();
+                }}
+                className="flex-1 py-3 font-semibold text-slate-600 dark:text-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateHomework}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-50"
+              >
+                {isSubmitting ? 'Creating...' : `Create ${tasks.filter(t => t.title.trim()).length} Assignment`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TasksView;

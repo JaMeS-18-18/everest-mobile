@@ -1,0 +1,8 @@
+
+{
+  "name": "Classroom Connect",
+  "description": "A comprehensive educational management platform for teachers and students to track homework, manage groups, and facilitate grading with AI-powered feedback.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
