@@ -125,6 +125,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               )}
             </button>
           </form>
+          <div className="w-full flex justify-center mt-4">
+            <span className="text-xs text-slate-400">contact: <a href="https://t.me/Pluto_18" target="_blank" rel="noopener noreferrer" className="underline">@Pluto_18</a></span>
+          </div>
         </div>
       </div>
     </div>
