@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import axios from 'axios';
 
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const api = axios.create({
@@ -31,7 +32,11 @@ api.interceptors.response.use(
   },
   (error) => {
     // 401 - Unauthorized, token eskirgan
-    if (error.response?.status === 401) {
+    const url = error?.config?.url || '';
+    if (
+      error.response?.status === 401 &&
+      (url.includes('/auth/me') || url.includes('/auth/login'))
+    ) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
@@ -16,7 +15,15 @@ interface Student {
   groupId: GroupInfo;
   createdAt: string;
   updatedAt: string;
+  profileImage?: string;
 }
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
+
+const getProfileImageUrl = (url?: string) => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_BASE_URL}${url}`;
+};
 
 interface StudentsViewProps {
   navigate: (view: View, studentId?: string) => void;
@@ -87,7 +94,7 @@ const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
         </div>
       </header>
 
-      <div className="p-4">
+      <div className="p-4 pb-20">
         <div className="relative flex items-center bg-white dark:bg-slate-800 h-12 rounded-xl shadow-sm px-4 border border-slate-200 dark:border-slate-800 mb-6">
           <span className="material-symbols-outlined text-slate-400">search</span>
           <input 
@@ -112,8 +119,16 @@ const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
                 onClick={() => navigate('STUDENT_PROFILE', student._id)}
                 className="flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-all cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-                  {student.fullName.charAt(0).toUpperCase()}
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary overflow-hidden">
+                  {student.profileImage ? (
+                    <img
+                      src={getProfileImageUrl(student.profileImage) || 'https://picsum.photos/seed/student/200/200'}
+                      alt={student.fullName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    student.fullName.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate capitalize">{student.fullName}</p>
@@ -139,13 +154,13 @@ const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
         )}
       </div>
 
-      <div className="fixed bottom-24 right-4 z-30">
+      <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-4 pointer-events-none">
         <button 
           onClick={() => navigate('CREATE_STUDENT')}
-          className="flex items-center gap-2 bg-primary text-white pl-4 pr-5 py-3 rounded-full shadow-lg shadow-primary/30 active:scale-95 transition-all"
+          className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
+          style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
         >
-          <span className="material-symbols-outlined">add</span>
-          <span className="font-bold">Add Student</span>
+          <span className="material-symbols-outlined text-[32px]">add</span>
         </button>
       </div>
     </div>

@@ -1,12 +1,17 @@
 
+
 export enum UserRole {
   TEACHER = 'Teacher',
-  STUDENT = 'Student'
+  STUDENT = 'Student',
+  ADMIN = 'Admin'
 }
 
 export type View = 
   | 'LOGIN'
   | 'DASHBOARD'
+  | 'STUDENT_HOME'
+  | 'STUDENT_HOMEWORK_DETAIL'
+  | 'STUDENT_SUBMIT_HOMEWORK'
   | 'GROUPS'
   | 'GROUP_DETAIL'
   | 'CREATE_GROUP'
@@ -19,7 +24,8 @@ export type View =
   | 'SUBMIT_HOMEWORK'
   | 'GRADING'
   | 'NOTIFICATIONS'
-  | 'SETTINGS';
+  | 'SETTINGS'
+  | 'ADMIN_TEACHERS';
 
 export interface Group {
   id: string;

@@ -1,14 +1,12 @@
-
 import React, { useState } from 'react';
 import { UserRole } from '../types';
 import api from '../api';
-
+import Logo from '../logo.png'
 interface LoginViewProps {
   onLogin: (role: UserRole) => void;
 }
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -40,8 +38,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         localStorage.setItem('user', JSON.stringify(data.user));
       }
 
-      // Use role from response
-      const userRole = data.user?.role === 'teacher' ? UserRole.TEACHER : UserRole.STUDENT;
+      // Use role from response (support admin, teacher, student)
+      let userRole: UserRole = UserRole.STUDENT;
+      if (data.user?.role === 'admin' || data.user?.role === 'Admin') userRole = UserRole.ADMIN;
+      else if (data.user?.role === 'teacher' || data.user?.role === 'Teacher') userRole = UserRole.TEACHER;
       onLogin(userRole);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
@@ -51,112 +51,80 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="w-full h-48 sm:h-64 bg-primary/10 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background-light dark:to-background-dark"></div>
-        <img 
-          alt="Login banner" 
-          className="w-full h-full object-cover opacity-60 mix-blend-overlay"
-          src="https://picsum.photos/seed/school/800/400" 
-        />
-      </div>
-      
-      <div className="flex-1 -mt-10 px-4 z-10">
-        <div className="bg-card-light dark:bg-card-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 mb-6">
-          <h1 className="text-2xl font-bold text-center mb-2">Classroom Connect</h1>
-          <p className="text-text-secondary-light dark:text-text-secondary-dark text-center mb-6">Log in to manage your homework.</p>
-          
-          <div className="flex h-12 w-full items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
-            <button
-              onClick={() => setSelectedRole(UserRole.STUDENT)}
-              className={`flex-1 h-full rounded-md text-sm font-medium transition-all ${
-                selectedRole === UserRole.STUDENT 
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' 
-                : 'text-slate-500'
-              }`}
-            >
-              Student
-            </button>
-            <button
-              onClick={() => setSelectedRole(UserRole.TEACHER)}
-              className={`flex-1 h-full rounded-md text-sm font-medium transition-all ${
-                selectedRole === UserRole.TEACHER 
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' 
-                : 'text-slate-500'
-              }`}
-            >
-              Teacher
-            </button>
+    <div className="min-h-screen flex flex-col justify-center items-center bg-background-light dark:bg-background-dark overflow-y-hidden transition-colors duration-300">
+      <div className="flex flex-col items-center w-full px-4">
+        <div className="flex flex-col items-center w-full max-w-md mx-auto">
+          <div className="rounded-3xl shadow-lg bg-card-light dark:bg-card-dark p-6 mb-6 flex items-center justify-center transition-colors duration-300" style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.04)' }}>
+            <img src={Logo} alt="Everest Logo" className="w-28 h-28 object-contain" />
           </div>
-        </div>
-
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          {error && (
-            <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <label className="text-sm font-medium ml-1">Username</label>
-            <input 
-              className="w-full h-12 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-              placeholder="Enter your username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-medium ml-1">Password</label>
-              <a href="#" className="text-primary text-sm font-medium">Forgot Password?</a>
-            </div>
-            <div className="relative">
-              <input 
-                className="w-full h-12 px-4 pr-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-                placeholder="Enter your password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button 
-                type="button" 
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                <span className="material-symbols-outlined text-[20px]">
-                  {showPassword ? 'visibility_off' : 'visibility'}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <button 
-            type="submit"
-            disabled={isLoading}
-            className="w-full h-12 bg-primary hover:bg-primary-dark text-white font-semibold rounded-lg shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-                <span>Logging in...</span>
-              </>
-            ) : (
-              <>
-                <span>Log In</span>
-                <span className="material-symbols-outlined text-[20px]">login</span>
-              </>
+          <h1 className="text-3xl md:text-2xl font-extrabold text-center mb-2 text-text-primary-light dark:text-text-primary-dark tracking-tight transition-colors duration-300">Pluto Homework</h1>
+          <p className="text-base md:text-sm text-center mb-8 text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-300">Manage your classes</p>
+          <form className="w-full space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-200 text-sm mb-2">
+                {error}
+              </div>
             )}
-          </button>
-        </form>
-
-        <div className="mt-8 text-center pb-8">
-          <p className="text-text-secondary-light dark:text-text-secondary-dark text-sm">
-            Don't have an account? <a href="#" className="text-primary font-medium hover:underline">Sign Up</a>
-          </p>
+            <div className="space-y-2">
+              <label className="text-base md:text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">Username</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]">
+                  <span className="material-symbols-outlined text-[22px] md:text-[18px]">person</span>
+                </span>
+                <input
+                  className="w-full h-14 md:h-12 pl-12 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-[#8ca0c3] dark:placeholder-[#b0bed0]"
+                  placeholder="Enter username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-base md:text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">Password</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]">
+                  <span className="material-symbols-outlined text-[22px] md:text-[18px]">lock</span>
+                </span>
+                <input
+                  className="w-full h-14 md:h-12 pl-12 pr-12 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-[#8ca0c3] dark:placeholder-[#b0bed0]"
+                  placeholder="Enter password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <span className="material-symbols-outlined text-[22px] md:text-[18px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-14 md:h-12 bg-primary hover:bg-primary-dark text-white text-lg md:text-base font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
+            >
+              {isLoading ? (
+                <>
+                  <span className="material-symbols-outlined text-[22px] md:text-[18px] animate-spin">progress_activity</span>
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                <>
+                  <span>Log In</span>
+                  <span className="material-symbols-outlined text-[22px] md:text-[18px]">arrow_forward</span>
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
     </div>

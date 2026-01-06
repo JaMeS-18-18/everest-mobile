@@ -30,7 +30,12 @@ interface Homework {
   studentId: string | null;
   assignmentType: 'group' | 'individual';
   assignments: Assignment[];
-  status: 'new' | 'in_progress' | 'completed';
+  status: 'new' | 'pending' | 'reviewed';
+  submissionStats?: {
+    submitted: number;
+    reviewed: number;
+    total: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +65,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed'>('all');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,7 +161,21 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
 
   const addTaskFiles = (id: string, newFiles: FileList | null) => {
     if (!newFiles) return;
-    setTasks(tasks.map(t => t.id === id ? { ...t, files: [...t.files, ...Array.from(newFiles)] } : t));
+    const validFiles: File[] = [];
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i];
+      if (!file.type.startsWith('image/')) {
+        alert('Faqat rasm fayllarini yuklash mumkin!');
+        continue;
+      }
+      if (file.size > 4 * 1024 * 1024) {
+        alert('The image size must not exceed 4MB!');
+        continue;
+      }
+      validFiles.push(file);
+    }
+    if (validFiles.length === 0) return;
+    setTasks(tasks.map(t => t.id === id ? { ...t, files: [...t.files, ...validFiles] } : t));
   };
 
   const removeTaskFile = (taskId: string, fileIndex: number) => {
@@ -179,6 +199,16 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
       return;
     }
 
+    if (!description.trim()) {
+      alert('Please enter a description');
+      return;
+    }
+
+    if (!deadline) {
+      alert('Please select a deadline');
+      return;
+    }
+
     if (assignmentType === 'group' && !selectedGroupId) {
       alert('Please select a group');
       return;
@@ -194,7 +224,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
     try {
       const formData = new FormData();
       formData.append('description', description);
-      formData.append('deadline', deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+      formData.append('deadline', deadline);
       formData.append('category', 'DOCUMENT');
       formData.append('assignmentType', assignmentType);
       
@@ -250,10 +280,10 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
     switch (status) {
       case 'new':
         return { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600', label: 'New' };
-      case 'in_progress':
-        return { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600', label: 'In Progress' };
-      case 'completed':
-        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', label: 'Completed' };
+      case 'pending':
+        return { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600', label: 'Pending' };
+      case 'reviewed':
+        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', label: 'Reviewed' };
       default:
         return { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600', label: status };
     }
@@ -273,6 +303,17 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
         return 'assignment';
     }
   };
+
+  // Filter homeworks based on active filter
+  const filteredHomeworks = homeworks.filter(hw => {
+    if (activeFilter === 'all') return true;
+    return hw.status === activeFilter;
+  });
+
+  // Stats counts
+  const newCount = homeworks.filter(hw => hw.status === 'new').length;
+  const pendingCount = homeworks.filter(hw => hw.status === 'pending').length;
+  const reviewedCount = homeworks.filter(hw => hw.status === 'reviewed').length;
 
   if (isLoading) {
     return (
@@ -300,7 +341,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 pt-12">
-        <div className="flex items-center justify-between mb-4">
+        {/* <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-primary">{user.fullName || 'Teacher'}</span>
           <button 
             onClick={() => navigate('SETTINGS')}
@@ -308,20 +349,68 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
           >
             <img src="https://picsum.photos/seed/teacher/100/100" className="w-full h-full object-cover" alt="Profile" />
           </button>
-        </div>
+        </div> */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-[32px] font-bold tracking-tight">Tasks</h1>
         </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 border border-blue-100 dark:border-blue-800">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-blue-500 text-lg">schedule</span>
+              <span className="text-xs text-blue-600 font-medium">New</span>
+            </div>
+            <span className="text-xl font-bold text-blue-600">{newCount}</span>
+          </div>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 border border-orange-100 dark:border-orange-800">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-orange-500 text-lg">pending</span>
+              <span className="text-xs text-orange-600 font-medium">Pending</span>
+            </div>
+            <span className="text-xl font-bold text-orange-600">{pendingCount}</span>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 border border-green-100 dark:border-green-800">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-green-500 text-lg">check_circle</span>
+              <span className="text-xs text-green-600 font-medium">Reviewed</span>
+            </div>
+            <span className="text-xl font-bold text-green-600">{reviewedCount}</span>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          {[
+            { key: 'all', label: 'All', count: homeworks.length },
+            { key: 'new', label: 'New', count: newCount },
+            { key: 'pending', label: 'Pending', count: pendingCount },
+            { key: 'reviewed', label: 'Reviewed', count: reviewedCount },
+          ].map((filter) => (
+            <button 
+              key={filter.key}
+              onClick={() => setActiveFilter(filter.key as typeof activeFilter)}
+              className={`h-9 px-4 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
+                activeFilter === filter.key 
+                  ? 'bg-primary text-white' 
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              {filter.label}
+              <span className={`text-xs ${activeFilter === filter.key ? 'text-white/80' : 'text-slate-400'}`}>({filter.count})</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="px-4 pb-24 space-y-4">
-        {homeworks.length === 0 ? (
+      <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-4">
+        {filteredHomeworks.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">assignment</span>
-            <p>No tasks found</p>
+            <p>{activeFilter === 'all' ? 'No tasks found' : `No ${activeFilter.replace('_', ' ')} tasks`}</p>
           </div>
         ) : (
-          homeworks.map((homework) => {
+          filteredHomeworks.map((homework) => {
             const statusConfig = getStatusConfig(homework.status);
             const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
 
@@ -347,9 +436,17 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                       )}
                     </div>
                     <p className="font-semibold truncate">{homework.description}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Deadline: {formatDate(homework.deadline)}
-                    </p>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                      <span>Deadline: {formatDate(homework.deadline)}</span>
+                      {homework.submissionStats && (
+                        <span className="flex items-center gap-1 font-medium">
+                          <span className="material-symbols-outlined text-sm">group</span>
+                          <span className={homework.submissionStats.submitted === homework.submissionStats.total ? 'text-green-600' : 'text-orange-600'}>
+                            {homework.submissionStats.submitted}/{homework.submissionStats.total}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -485,14 +582,14 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                           e.target.value = '';
                         }}
                         className="hidden"
-                        accept="image/*,.pdf,.doc,.docx"
+                        accept="image/*"
                       />
                       <button
                         onClick={() => fileInputRefs.current[task.id]?.click()}
                         className="w-full py-3 border-2 border-dashed border-primary/30 rounded-lg text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
                       >
                         <span className="material-symbols-outlined">upload_file</span>
-                        Upload Files
+                        Upload Images
                       </button>
                       {/* Uploaded files preview */}
                       {task.files.length > 0 && (
@@ -528,7 +625,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Description <span className="text-slate-400">(Optional)</span>
+                      Description <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       placeholder="Add detailed instructions..."
@@ -536,18 +633,20 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
+                      required
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Deadline <span className="text-slate-400">(Optional)</span>
+                      Deadline <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      required
                     />
                   </div>
 

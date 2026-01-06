@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View } from '../types';
 import api from '../api';
+import { ToastContainer, toast } from 'react-toastify';
 
 interface ImageFile {
   filename: string;
@@ -38,6 +39,7 @@ interface Homework {
   groupId: GroupInfo | null;
   studentId: string | null;
   studentIds: StudentInfo[];
+  groupStudents?: StudentInfo[];
   assignmentType: 'group' | 'individual';
   assignments: Assignment[];
   status: 'new' | 'in_progress' | 'completed';
@@ -81,6 +83,13 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  // Submission review state
+  const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewFeedback, setReviewFeedback] = useState('');
+  const [reviewStatus, setReviewStatus] = useState<'approved' | 'rejected'>('approved');
+  const [isReviewing, setIsReviewing] = useState(false);
 
   // Edit form state
   const [editTasks, setEditTasks] = useState<EditTaskItem[]>([]);
@@ -170,6 +179,37 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
     }
   };
 
+  const openReviewModal = (student: StudentInfo) => {
+    if (!student.submitted || !student.submission) return;
+    setSelectedStudent(student);
+    setReviewFeedback(student.submission.teacherComment || '');
+    setReviewStatus(student.submission.status === 'rejected' ? 'rejected' : 'approved');
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!selectedStudent?.submission?._id) return;
+    
+    setIsReviewing(true);
+    try {
+      const response = await api.put(`/homework/submissions/${selectedStudent.submission._id}/review`, {
+        status: reviewStatus,
+        teacherComment: reviewFeedback
+      });
+
+      if (response.data.success) {
+        setShowReviewModal(false);
+        fetchHomework(); // Refresh data
+      } else {
+        toast.error(response.data.message || 'Failed to submit review');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to submit review');
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   // Task management functions
   const addEditTask = () => {
     const newId = Date.now().toString();
@@ -202,17 +242,17 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
   const handleEdit = async () => {
     const validTasks = editTasks.filter(t => t.title.trim());
     if (validTasks.length === 0) {
-      alert('Please add at least one task with a title');
+      toast.error('Please add at least one task with a title');
       return;
     }
 
     if (editAssignmentType === 'group' && !editGroupId) {
-      alert('Please select a group');
+      toast.error('Please select a group');
       return;
     }
 
     if (editAssignmentType === 'individual' && editStudentIds.length === 0) {
-      alert('Please select at least one student');
+      toast.error('Please select at least one student');
       return;
     }
 
@@ -261,8 +301,8 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
       } else {
         throw new Error(response.data.message || 'Failed to update homework');
       }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update homework');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to update homework');
     } finally {
       setIsSaving(false);
     }
@@ -278,8 +318,8 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
       } else {
         throw new Error(response.data.message || 'Failed to delete homework');
       }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete homework');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete homework');
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -438,11 +478,12 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">people</span>
-                <h3 className="font-bold">Assigned Students ({homework.studentIds.length})</h3>
+                <h3 className="font-bold">Selected Students ({homework.studentIds.length})</h3>
               </div>
+              <br />
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-green-600 font-medium">
-                  {homework.studentIds.filter(s => s.submitted).length} done
+                  {homework.studentIds.filter(s => s.submitted).length} completed
                 </span>
                 <span className="text-slate-400">/</span>
                 <span className="text-orange-500 font-medium">
@@ -452,12 +493,14 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
             </div>
             <div className="space-y-2">
               {homework.studentIds.map((student) => (
-                <div 
+                <button 
                   key={student._id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border ${
+                  onClick={() => student.submitted && openReviewModal(student)}
+                  disabled={!student.submitted}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     student.submitted 
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700'
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md' 
+                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 cursor-default'
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -471,15 +514,21 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                       {student.submitted ? 'check_circle' : 'person'}
                     </span>
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm truncate">{student.fullName}</p>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        student.submitted 
-                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600' 
-                          : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'
+                        student.submission?.status === 'approved' 
+                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
+                          : student.submission?.status === 'rejected'
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600'
+                            : student.submitted 
+                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' 
+                              : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'
                       }`}>
-                        {student.submitted ? 'Submitted' : 'Pending'}
+                        {student.submission?.status === 'approved' ? 'Approved' 
+                          : student.submission?.status === 'rejected' ? 'Rejected'
+                          : student.submitted ? 'Under Review' : 'Pending'}
                       </span>
                     </div>
                     {student.phone && (
@@ -496,7 +545,85 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                       task_alt
                     </span>
                   )}
-                </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Group Students Card - for group assignments */}
+        {homework.assignmentType === 'group' && homework.groupStudents && homework.groupStudents.length > 0 && (
+          <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">groups</span>
+                <h3 className="font-bold">{homework.groupId?.name} ({homework.groupStudents.length})</h3>
+              </div>
+            </div>
+              <div className="flex items-center text-end  gap-2 mb-2 text-xs">
+                <span className="text-green-600 font-medium">
+                  {homework.groupStudents.filter(s => s.submitted).length} completed
+                </span>
+                <span className="text-slate-400">/</span>
+                <span className="text-orange-500 font-medium">
+                  {homework.groupStudents.filter(s => !s.submitted).length} pending
+                </span>
+              </div>
+            <div className="space-y-2">
+              {homework.groupStudents.map((student) => (
+                <button 
+                  key={student._id}
+                  onClick={() => student.submitted && openReviewModal(student)}
+                  disabled={!student.submitted}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                    student.submitted 
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md' 
+                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 cursor-default'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    student.submitted 
+                      ? 'bg-green-100 dark:bg-green-900/40' 
+                      : 'bg-primary/10'
+                  }`}>
+                    <span className={`material-symbols-outlined text-[20px] ${
+                      student.submitted ? 'text-green-600' : 'text-primary'
+                    }`}>
+                      {student.submitted ? 'check_circle' : 'person'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm truncate">{student.fullName}</p>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        student.submission?.status === 'approved' 
+                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
+                          : student.submission?.status === 'rejected'
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600'
+                            : student.submitted 
+                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' 
+                              : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'
+                      }`}>
+                        {student.submission?.status === 'approved' ? 'Approved' 
+                          : student.submission?.status === 'rejected' ? 'Rejected'
+                          : student.submitted ? 'Under Review' : 'Pending'}
+                      </span>
+                    </div>
+                    {student.phone && (
+                      <p className="text-xs text-slate-500 mt-0.5">{student.phone}</p>
+                    )}
+                    {student.submitted && student.submittedAt && (
+                      <p className="text-xs text-green-600 mt-0.5">
+                        Submitted: {formatDate(student.submittedAt)}
+                      </p>
+                    )}
+                  </div>
+                  {student.submitted && (
+                    <span className="material-symbols-outlined text-green-500 text-[24px]">
+                      task_alt
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
           </div>
@@ -909,8 +1036,146 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
           />
         </div>
       )}
+
+      {/* Submission Review Modal */}
+      {showReviewModal && selectedStudent?.submission && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowReviewModal(false)} />
+          <div className="relative bg-background-light dark:bg-background-dark w-full max-w-md mx-4 sm:mx-auto rounded-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-lg font-bold">{selectedStudent.fullName}</h2>
+                <p className="text-xs text-slate-500">
+                  Submitted: {selectedStudent.submittedAt ? formatDate(selectedStudent.submittedAt) : '-'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Submission Answers */}
+              {selectedStudent.submission.answers?.map((answer: any, idx: number) => (
+                <div key={idx} className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                      {idx + 1}
+                    </div>
+                    <h4 className="font-semibold text-sm">{answer.assignmentName || `Task ${idx + 1}`}</h4>
+                  </div>
+                  
+                  {/* Text Answer */}
+                  {answer.textContent && (
+                    <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <p className="text-sm">{answer.textContent}</p>
+                    </div>
+                  )}
+
+                  {/* Images */}
+                  {answer.files && answer.files.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).map((file: any, fileIdx: number) => (
+                        <button
+                          key={fileIdx}
+                          onClick={() => setSelectedImage(file.url)}
+                          className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
+                        >
+                          <img 
+                            src={file.url}
+                            alt=""
+                            className="w-full h-full object-cover hover:scale-105 transition-transform"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Feedback Input */}
+              <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                <label className="block text-sm font-medium mb-2">Feedback</label>
+                <textarea
+                  value={reviewFeedback}
+                  onChange={(e) => setReviewFeedback(e.target.value)}
+                  placeholder="Write feedback for the student..."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none min-h-[80px]"
+                />
+              </div>
+
+              {/* Status Selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setReviewStatus('approved')}
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                    reviewStatus === 'approved'
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-2xl ${reviewStatus === 'approved' ? 'text-green-500' : 'text-slate-400'}`}>
+                    check_circle
+                  </span>
+                  <span className={`text-sm font-medium ${reviewStatus === 'approved' ? 'text-green-600' : 'text-slate-500'}`}>
+                    Approve
+                  </span>
+                </button>
+                <button
+                  onClick={() => setReviewStatus('rejected')}
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                    reviewStatus === 'rejected'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-2xl ${reviewStatus === 'rejected' ? 'text-red-500' : 'text-slate-400'}`}>
+                    cancel
+                  </span>
+                  <span className={`text-sm font-medium ${reviewStatus === 'rejected' ? 'text-red-600' : 'text-slate-500'}`}>
+                    Reject
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 mb-5 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={handleReviewSubmit}
+                disabled={isReviewing}
+                className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 ${
+                  reviewStatus === 'approved'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-red-500 text-white'
+                } disabled:opacity-50`}
+              >
+                {isReviewing && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
+                {reviewStatus === 'approved' ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <ToastContainer
+        position="top-center"
+        autoClose={2500}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        aria-label="Notification"
+      />
+
     </div>
-  );
+    );
 };
 
 export default TaskDetailView;

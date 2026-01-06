@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
@@ -32,7 +31,24 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
+  const getProfileImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${API_BASE_URL}${url}`;
+  };
+
+  useEffect(() => {
+    // Always fetch latest user info from /auth/me
+    api.get('/auth/me').then(res => {
+      if (res.data.success && res.data.user) {
+        setUser(res.data.user);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+      }
+    });
+  }, []);
+ 
 
   useEffect(() => {
     fetchGroups();
@@ -97,22 +113,43 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
     );
   }
 
+    const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 pt-12">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm font-medium text-primary">{user.fullName || 'Teacher'}</span>
-          <div className="flex gap-2">
-            <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button 
-              onClick={() => navigate('SETTINGS')}
-              className="w-10 h-10 rounded-full ring-2 ring-white dark:ring-slate-900 overflow-hidden"
-            >
-              <img src="https://picsum.photos/seed/teacher/100/100" className="w-full h-full object-cover" alt="Profile" />
-            </button>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                {user?.profileImage ? (
+                  <img
+                    src={getProfileImageUrl(user.profileImage) || 'https://picsum.photos/seed/profile/200/200'}
+                    alt={user.fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-primary text-2xl">person</span>
+                )}
+              </div>
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
+              <span className="text-lg font-bold">{user.fullName || 'Teacher'}</span>
+            </div>
           </div>
+          <button 
+            onClick={() => navigate('SETTINGS')}
+            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+          >
+            <span className="material-symbols-outlined text-slate-500">settings</span>
+          </button>
         </div>
         <h1 className="text-[32px] font-bold tracking-tight mb-4">My Groups</h1>
       </div>
@@ -172,9 +209,21 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
                   {group.students.slice(0, 3).map((student, idx) => (
                     <div 
                       key={student._id} 
-                      className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-white dark:ring-slate-900"
+                      className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-white dark:ring-slate-900 overflow-hidden"
                     >
-                      {student.fullName.charAt(0).toUpperCase()}
+                      {student.profileImage ? (
+                        <img
+                          src={getProfileImageUrl(student.profileImage) || 'https://picsum.photos/id/1005/200/200'}
+                          alt={student.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src="https://picsum.photos/id/1005/200/200"
+                          alt="Student placeholder"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   ))}
                   {group.students.length > 3 && (
@@ -189,10 +238,11 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
         )}
       </div>
 
-      <div className="fixed bottom-24 right-6 z-30">
+      <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-6 pointer-events-none">
         <button 
           onClick={() => navigate('CREATE_GROUP')}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all"
+          className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
+          style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
         >
           <span className="material-symbols-outlined text-[32px]">add</span>
         </button>

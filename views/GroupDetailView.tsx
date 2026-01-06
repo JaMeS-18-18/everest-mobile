@@ -1,6 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Student {
   _id: string;
@@ -33,6 +36,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -48,6 +52,29 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
   useEffect(() => {
     fetchGroup();
   }, [groupId]);
+
+    // State for all students (for modal)
+  const [allStudents, setAllStudents] = useState([]);
+  const [isStudentsLoading, setIsStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState('');
+
+  // Fetch all students when modal opens
+  useEffect(() => {
+    if (isAddStudentModalOpen) {
+      setIsStudentsLoading(true);
+      setStudentsError('');
+      api.get('/students')
+        .then(res => {
+          if (res.data.success) {
+            setAllStudents(res.data.data);
+          } else {
+            setStudentsError(res.data.message || 'Failed to fetch students');
+          }
+        })
+        .catch(() => setStudentsError('Failed to fetch students'))
+        .finally(() => setIsStudentsLoading(false));
+    }
+  }, [isAddStudentModalOpen]);
 
   const fetchGroup = async () => {
     try {
@@ -104,7 +131,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
         setIsEditModalOpen(false);
       }
     } catch (err) {
-      alert('Failed to update group');
+      toast.error('Failed to update group');
     } finally {
       setIsSaving(false);
     }
@@ -119,7 +146,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
         onBack();
       }
     } catch (err) {
-      alert('Failed to delete group');
+      toast.error('Failed to delete group');
     } finally {
       setIsSaving(false);
     }
@@ -152,6 +179,8 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
       </div>
     );
   }
+
+  
 
   return (
     <div className="flex flex-col h-full">
@@ -213,10 +242,11 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
         </div>
       </div>
 
-      {/* Students List */}
+      {/* Students List + Add Student Button */}
       <div className="flex-1 px-4 pb-24">
-        <h2 className="text-lg font-semibold mb-3 mt-4">Students ({filteredStudents.length})</h2>
-        
+        <div className="flex items-center justify-between mb-3 mt-4">
+          <h2 className="text-lg font-semibold">Students ({filteredStudents.length})</h2>
+        </div>
         {filteredStudents.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">person_off</span>
@@ -227,7 +257,8 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
             {filteredStudents.map((student) => (
               <div 
                 key={student._id}
-                className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800"
+                className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-primary/40 transition-all"
+                onClick={() => navigate('STUDENT_PROFILE', student._id)}
               >
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
                   {student.fullName.charAt(0).toUpperCase()}
@@ -240,6 +271,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
                 </div>
                 <a 
                   href={`tel:${student.phone}`}
+                  onClick={e => e.stopPropagation()}
                   className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600"
                 >
                   <span className="material-symbols-outlined text-[20px]">call</span>
@@ -250,6 +282,60 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
         )}
       </div>
 
+      {/* Add Student Modal */}
+      {isAddStudentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsAddStudentModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-card-light dark:bg-card-dark rounded-2xl p-6 animate-slide-up">
+            <button 
+              onClick={() => setIsAddStudentModalOpen(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            <h2 className="text-xl font-bold mb-6">Assign Student to Group</h2>
+            {/* Student list for assignment */}
+            {isStudentsLoading ? (
+              <div className="flex flex-col items-center py-8">
+                <span className="material-symbols-outlined text-4xl animate-spin text-primary mb-2">progress_activity</span>
+                <p>Loading students...</p>
+              </div>
+            ) : studentsError ? (
+              <div className="text-center text-red-500 py-8">
+                <span className="material-symbols-outlined text-4xl mb-2">error</span>
+                <p>{studentsError}</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {allStudents.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary-light">
+                    <span className="material-symbols-outlined text-4xl mb-2">person_off</span>
+                    <p>No students found</p>
+                  </div>
+                ) : (
+                  allStudents.map(student => (
+                    <div key={student._id} className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800">
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
+                        {student.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{student.fullName}</h3>
+                        <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{student.phone}</p>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">
+                        {student.groupId ? 'Assigned' : 'Unassigned'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Edit/Delete Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -368,6 +454,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
           </div>
         </div>
       )}
+    <ToastContainer position="top-center" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label={undefined} />
     </div>
   );
 };
