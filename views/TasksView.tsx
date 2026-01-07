@@ -469,7 +469,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                     {homework.assignments.flatMap(a => a.images).slice(0, 4).map((img, idx) => (
                       <img 
                         key={idx}
-                        src={img.url}
+                        src={img.path || img.url}
                         alt=""
                         className="w-16 h-16 rounded-lg object-cover shrink-0"
                       />

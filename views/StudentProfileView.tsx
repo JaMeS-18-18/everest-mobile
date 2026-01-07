@@ -23,6 +23,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/,
 
 const getProfileImageUrl = (url?: string) => {
   if (!url) return undefined;
+  // Support Cloudinary direct URLs and legacy local URLs
   if (url.startsWith('http')) return url;
   return `${API_BASE_URL}${url}`;
 };
@@ -301,6 +302,25 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                 <h2 className="text-xl font-bold mb-6">Edit Student</h2>
                 <div className="space-y-4">
                   <div>
+                    <label className="text-sm font-medium mb-1 block">Profile Image</label>
+                    <input type="file" accept="image/*" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      try {
+                        const res = await api.post('/auth/upload-profile-image', formData, {
+                          headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        if (res.data.success && res.data.url) {
+                          setStudent(s => s ? { ...s, profileImage: res.data.url } : s);
+                        }
+                      } catch (err) {
+                        alert('Failed to upload image');
+                      }
+                    }} />
+                  </div>
+                  <div>
                     <label className="text-sm font-medium mb-1 block">Full Name</label>
                     <input type="text" value={editForm.fullName} onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))} className="w-full h-12 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-1 focus:ring-primary focus:border-primary" />
                   </div>
@@ -353,7 +373,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
         <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary mb-4 overflow-hidden">
           {student.profileImage ? (
             <img
-              src={getProfileImageUrl(student.profileImage) || 'https://picsum.photos/seed/student/200/200'}
+              src={getProfileImageUrl(student.profileImage) || student.profileImage || 'https://picsum.photos/seed/student/200/200'}
               alt={student.fullName}
               className="w-full h-full object-cover"
             />
@@ -612,11 +632,11 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                               <button
                                 key={imgIdx}
                                 type="button"
-                                onClick={() => setPreviewImage(img.url)}
+                                onClick={() => setPreviewImage(img.path || img.url)}
                                 className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                               >
                                 <img
-                                  src={img.url}
+                                  src={img.path || img.url}
                                   alt={img.filename || ''}
                                   className="w-full h-full object-cover hover:scale-105 transition-transform"
                                 />
@@ -644,11 +664,11 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                                   <button
                                     key={fileIdx}
                                     type="button"
-                                    onClick={() => setPreviewImage(file.url)}
+                                    onClick={() => setPreviewImage(file.path)}
                                     className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center"
                                   >
                                     <img
-                                      src={file.url}
+                                      src={file.path}
                                       alt=""
                                       className="w-full h-full object-cover hover:scale-105 transition-transform"
                                     />

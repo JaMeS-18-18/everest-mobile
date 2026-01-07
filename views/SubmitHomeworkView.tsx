@@ -458,11 +458,11 @@ const formatDate = (dateString: string) => {
                   {selectedTask.images.map((img, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setSelectedImage(img.url)}
+                      onClick={() => setSelectedImage(img.path || img.url)}
                       className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                     >
                       <img 
-                        src={img.url}
+                        src={img.path || img.url}
                         alt=""
                         className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />

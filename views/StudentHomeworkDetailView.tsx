@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
 
+// Helper to get correct image URL (Cloudinary or legacy)
+function getImageUrl(img: { path?: string; url?: string }) {
+  if (img.path && img.path.startsWith('http')) return img.path;
+  if (img.url && img.url.startsWith('http')) return img.url;
+  if (img.path) return img.path;
+  if (img.url) return img.url;
+  return '';
+}
+
 interface ImageFile {
   filename: string;
   url: string;
@@ -353,11 +362,11 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
                       {assignment.images.map((img, idx) => (
                         <button
                           key={idx}
-                          onClick={() => setSelectedImage(img.url)}
+                          onClick={() => setSelectedImage(getImageUrl(img))}
                           className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                         >
                           <img 
-                            src={img.url}
+                            src={getImageUrl(img)}
                             alt=""
                             className="w-full h-full object-cover hover:scale-105 transition-transform"
                           />
@@ -395,11 +404,11 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
                           {answer.files.map((file, fileIdx) => (
                             <button
                               key={fileIdx}
-                              onClick={() => setSelectedImage(file.url)}
+                              onClick={() => setSelectedImage(file.path)}
                               className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
                             >
                               <img 
-                                src={file.url}
+                                src={file.path}
                                 alt=""
                                 className="w-full h-full object-cover hover:scale-105 transition-transform"
                               />

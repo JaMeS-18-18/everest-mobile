@@ -697,11 +697,11 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                     {assignment.images.map((img, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setSelectedImage(img.url)}
+                        onClick={() => setSelectedImage(img.path || img.url)}
                         className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                       >
                         <img 
-                          src={img.url}
+                          src={img.path || img.url}
                           alt=""
                           className="w-full h-full object-cover hover:scale-105 transition-transform"
                         />
@@ -804,7 +804,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                             {task.existingImages.map((img, imgIndex) => (
                               <div key={imgIndex} className="relative">
                                 <img 
-                                  src={img.url} 
+                                  src={img.path || img.url} 
                                   alt="" 
                                   className="w-14 h-14 rounded-lg object-cover"
                                 />
@@ -1135,10 +1135,10 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                           {assignment.images.map((img, idx) => (
                             <button
                               key={idx}
-                              onClick={() => setSelectedImage(img.url)}
+                              onClick={() => setSelectedImage(img.path || img.url)}
                               className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                             >
-                              <img src={img.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                              <img src={img.path || img.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
                             </button>
                           ))}
                         </div>
@@ -1166,11 +1166,11 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                           {answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).map((file: any, fileIdx: number) => (
                             <button
                               key={fileIdx}
-                              onClick={() => setSelectedImage(file.url)}
+                              onClick={() => setSelectedImage(file.path)}
                               className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
                             >
                               <img
-                                src={file.url}
+                                src={file.path}
                                 alt=""
                                 className="w-full h-full object-cover hover:scale-105 transition-transform"
                               />
