@@ -213,16 +213,12 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
                     >
                       {student.profileImage ? (
                         <img
-                          src={getProfileImageUrl(student.profileImage) || 'https://picsum.photos/id/1005/200/200'}
+                          src={getProfileImageUrl(student.profileImage) || 'https://picsum.photos/seed/student/200/200'}
                           alt={student.fullName}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <img
-                          src="https://picsum.photos/id/1005/200/200"
-                          alt="Student placeholder"
-                          className="w-full h-full object-cover"
-                        />
+                        student.fullName.charAt(0).toUpperCase()
                       )}
                     </div>
                   ))}

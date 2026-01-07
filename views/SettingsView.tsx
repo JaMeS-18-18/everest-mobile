@@ -161,7 +161,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
       <div className="p-4 flex flex-col items-center py-8">
         <div className="relative mb-4 group cursor-pointer" onClick={() => setShowImageModal(true)}>
           <img 
-            src={getProfileImageUrl(profile?.profileImage) || (profile?.role === UserRole.TEACHER ? "https://picsum.photos/seed/elena/200/200" : "https://picsum.photos/seed/ivan/200/200")}
+            src={getProfileImageUrl(profile?.profileImage) || "https://media.istockphoto.com/id/2168774111/vector/avatar-or-person-sign-profile-picture-portrait-icon-user-profile-symbol.jpg?s=612x612&w=0&k=20&c=6qw1LRG53z00RXJnVKQC58W7XnW2gdQfGBIR43E97Oc="}
             className="w-28 h-28 rounded-full border-4 border-white dark:border-slate-800 shadow-sm object-cover" 
             alt="Profile" 
           />

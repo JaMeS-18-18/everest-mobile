@@ -225,7 +225,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
           </button>
         </div>
 
-        <h1 className="text-[28px] font-bold tracking-tight mb-4">My Homework</h1>
+        <h1 className="text-[28px] font-bold tracking-tight mb-4">My Homeworks</h1>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-2 mb-4">
