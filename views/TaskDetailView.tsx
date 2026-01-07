@@ -88,8 +88,10 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
   const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState('');
-  const [reviewStatus, setReviewStatus] = useState<'approved' | 'rejected'>('approved');
+  const [reviewStatus, setReviewStatus] = useState<'Worse' | 'Bad' | 'Good' | 'Better' | 'Perfect'>('Good');
   const [isReviewing, setIsReviewing] = useState(false);
+  // Step-by-step assignment navigation in modal
+  const [currentAssignmentIdx, setCurrentAssignmentIdx] = useState(0);
 
   // Edit form state
   const [editTasks, setEditTasks] = useState<EditTaskItem[]>([]);
@@ -132,7 +134,15 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
 
   const initEditForm = (hw: Homework) => {
     setEditDescription(hw.description);
-    setEditDeadline(hw.deadline.split('T')[0]);
+    // Format deadline for datetime-local input (YYYY-MM-DDTHH:MM)
+    if (hw.deadline) {
+      const d = new Date(hw.deadline);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setEditDeadline(formatted);
+    } else {
+      setEditDeadline('');
+    }
     setEditLink(hw.link || '');
     setEditAssignmentType(hw.assignmentType);
     setEditGroupId(hw.groupId?._id || '');
@@ -180,10 +190,15 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
   };
 
   const openReviewModal = (student: StudentInfo) => {
-    if (!student.submitted || !student.submission) return;
     setSelectedStudent(student);
-    setReviewFeedback(student.submission.teacherComment || '');
-    setReviewStatus(student.submission.status === 'rejected' ? 'rejected' : 'approved');
+    setCurrentAssignmentIdx(0);
+    if (student.submitted && student.submission) {
+      setReviewFeedback(student.submission.teacherComment || '');
+      setReviewStatus(student.submission.status || '');
+    } else {
+      setReviewFeedback('');
+      setReviewStatus('Good');
+    }
     setShowReviewModal(true);
   };
 
@@ -326,12 +341,17 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
     }
   };
 
-  const formatDate = (dateString: string) => {
+  // Date and time formatting utility
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -387,6 +407,9 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
   }
 
   const statusConfig = getStatusConfig(homework.status);
+    // For group assignments, fallback to 'pending' if status is missing
+    const displayStatus = homework.status || (homework.assignmentType === 'group' ? 'pending' : '');
+    const statusConfigGroup = getStatusConfig(displayStatus);
   const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
 
   return (
@@ -423,13 +446,13 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
         {/* Main Info Card */}
         <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
           <div className="flex items-start gap-3 mb-4">
-            <div className={`w-14 h-14 rounded-xl ${statusConfig.bg} ${statusConfig.text} flex items-center justify-center shrink-0`}>
+            <div className={`w-14 h-14 rounded-xl ${statusConfigGroup.bg} ${statusConfigGroup.text} flex items-center justify-center shrink-0`}>
               <span className="material-symbols-outlined text-[28px]">{getCategoryIcon(homework.category)}</span>
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap gap-2 mb-2">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusConfig.bg} ${statusConfig.text}`}>
-                  {statusConfig.label}
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusConfigGroup.bg} ${statusConfigGroup.text}`}>
+                  {statusConfigGroup.label}
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 uppercase">
                   {homework.category}
@@ -451,7 +474,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
             <div className="flex items-center gap-3 text-sm">
               <span className="material-symbols-outlined text-[20px] text-slate-400">event</span>
               <span className="text-slate-600 dark:text-slate-400">Deadline:</span>
-              <span className="font-medium">{formatDate(homework.deadline)}</span>
+              <span className="font-medium">{formatDateTime(homework.deadline)}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <span className="material-symbols-outlined text-[20px] text-slate-400">category</span>
@@ -517,18 +540,22 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm truncate">{student.fullName}</p>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        student.submission?.status === 'approved' 
-                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
-                          : student.submission?.status === 'rejected'
-                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600'
-                            : student.submitted 
-                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' 
-                              : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'
-                      }`}>
-                        {student.submission?.status === 'approved' ? 'Approved' 
-                          : student.submission?.status === 'rejected' ? 'Rejected'
-                          : student.submitted ? 'Under Review' : 'Pending'}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
+                          ${student.submission?.status === 'Worse' ? 'bg-red-200 dark:bg-red-900/40 text-red-700'
+                            : student.submission?.status === 'Bad' ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700'
+                            : student.submission?.status === 'Good' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                            : student.submission?.status === 'Better' ? 'bg-green-200 dark:bg-green-900/40 text-green-700'
+                            : student.submission?.status === 'Perfect' ? 'bg-yellow-200 dark:bg-yellow-300/40 text-yellow-800'
+                            : student.submitted ? 'bg-slate-200 dark:bg-slate-700 text-slate-600'
+                            : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'}
+                        `}
+                      >
+                        {student.submission?.status
+                          ? student.submission.status
+                          : student.submitted
+                            ? 'Under Review'
+                            : 'Pending'}
                       </span>
                     </div>
                     {student.phone && (
@@ -536,7 +563,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                     )}
                     {student.submitted && student.submittedAt && (
                       <p className="text-xs text-green-600 mt-0.5">
-                        Submitted: {formatDate(student.submittedAt)}
+                        Submitted: {formatDateTime(student.submittedAt)}
                       </p>
                     )}
                   </div>
@@ -571,19 +598,19 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
               </div>
             <div className="space-y-2">
               {homework.groupStudents.map((student) => (
-                <button 
+                <button
                   key={student._id}
-                  onClick={() => student.submitted && openReviewModal(student)}
-                  disabled={!student.submitted}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    student.submitted 
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md' 
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 cursor-default'
+                  onClick={() => openReviewModal(student)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
+                    student.submitted
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-100'
                   }`}
+                  style={{ pointerEvents: 'auto', zIndex: 1 }}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    student.submitted 
-                      ? 'bg-green-100 dark:bg-green-900/40' 
+                    student.submitted
+                      ? 'bg-green-100 dark:bg-green-900/40'
                       : 'bg-primary/10'
                   }`}>
                     <span className={`material-symbols-outlined text-[20px] ${
@@ -595,18 +622,21 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm truncate">{student.fullName}</p>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        student.submission?.status === 'approved' 
-                          ? 'bg-green-100 dark:bg-green-900/40 text-green-600'
-                          : student.submission?.status === 'rejected'
-                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600'
-                            : student.submitted 
-                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' 
-                              : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'
-                      }`}>
-                        {student.submission?.status === 'approved' ? 'Approved' 
-                          : student.submission?.status === 'rejected' ? 'Rejected'
-                          : student.submitted ? 'Under Review' : 'Pending'}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
+                          ${student.submission?.status === 'Worse' ? 'bg-red-200 dark:bg-red-900/40 text-red-700'
+                            : student.submission?.status === 'Bad' ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700'
+                            : student.submission?.status === 'Good' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                            : student.submission?.status === 'Better' ? 'bg-green-200 dark:bg-green-900/40 text-green-700'
+                            : student.submission?.status === 'Perfect' ? 'bg-yellow-200 dark:bg-yellow-300/40 text-yellow-800'
+                            : student.submitted ? 'bg-slate-200 dark:bg-slate-700 text-slate-600'
+                            : 'bg-orange-100 dark:bg-orange-900/40 text-orange-500'}`}
+                      >
+                        {student.submission?.status
+                          ? student.submission.status
+                          : student.submitted
+                            ? 'Under Review'
+                            : 'Pending'}
                       </span>
                     </div>
                     {student.phone && (
@@ -614,7 +644,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                     )}
                     {student.submitted && student.submittedAt && (
                       <p className="text-xs text-green-600 mt-0.5">
-                        Submitted: {formatDate(student.submittedAt)}
+                        Submitted: {formatDateTime(student.submittedAt)}
                       </p>
                     )}
                   </div>
@@ -841,7 +871,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                       Deadline <span className="text-slate-400">(Optional)</span>
                     </label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={editDeadline}
                       onChange={(e) => setEditDeadline(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
@@ -1037,8 +1067,8 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
         </div>
       )}
 
-      {/* Submission Review Modal */}
-      {showReviewModal && selectedStudent?.submission && (
+      {/* Submission Review Modal (step-by-step, always opens) */}
+      {showReviewModal && selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowReviewModal(false)} />
           <div className="relative bg-background-light dark:bg-background-dark w-full max-w-md mx-4 sm:mx-auto rounded-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -1047,7 +1077,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
               <div>
                 <h2 className="text-lg font-bold">{selectedStudent.fullName}</h2>
                 <p className="text-xs text-slate-500">
-                  Submitted: {selectedStudent.submittedAt ? formatDate(selectedStudent.submittedAt) : '-'}
+                  {selectedStudent.submittedAt ? `Submitted: ${formatDateTime(selectedStudent.submittedAt)}` : 'Not submitted yet'}
                 </p>
               </div>
               <button
@@ -1058,45 +1088,100 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
               </button>
             </div>
 
-            {/* Modal Content */}
+            {/* Step-by-step assignments navigation */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Submission Answers */}
-              {selectedStudent.submission.answers?.map((answer: any, idx: number) => (
-                <div key={idx} className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
-                      {idx + 1}
-                    </div>
-                    <h4 className="font-semibold text-sm">{answer.assignmentName || `Task ${idx + 1}`}</h4>
-                  </div>
-                  
-                  {/* Text Answer */}
-                  {answer.textContent && (
-                    <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                      <p className="text-sm">{answer.textContent}</p>
-                    </div>
-                  )}
-
-                  {/* Images */}
-                  {answer.files && answer.files.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).map((file: any, fileIdx: number) => (
-                        <button
-                          key={fileIdx}
-                          onClick={() => setSelectedImage(file.url)}
-                          className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
-                        >
-                          <img 
-                            src={file.url}
-                            alt=""
-                            className="w-full h-full object-cover hover:scale-105 transition-transform"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              {homework.assignments.length > 0 && (
+                <div className="mb-4 flex items-center justify-between">
+                  <button
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onClick={() => setCurrentAssignmentIdx(idx => Math.max(0, idx - 1))}
+                    disabled={currentAssignmentIdx === 0}
+                  >
+                    <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <span className="text-sm font-medium">
+                    Task {currentAssignmentIdx + 1} / {homework.assignments.length}
+                  </span>
+                  <button
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onClick={() => setCurrentAssignmentIdx(idx => Math.min(homework.assignments.length - 1, idx + 1))}
+                    disabled={currentAssignmentIdx === homework.assignments.length - 1}
+                  >
+                    <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
                 </div>
-              ))}
+              )}
+              {/* Assignment details and answer */}
+              {(() => {
+                const assignment = homework.assignments[currentAssignmentIdx];
+                let answer = null;
+                if (selectedStudent.submission && selectedStudent.submission.answers) {
+                  answer = selectedStudent.submission.answers[currentAssignmentIdx];
+                }
+                return (
+                  <>
+                    {/* Teacher assignment info */}
+                    <div className="mb-3 p-4 rounded-xl border-2 border-primary/30 bg-primary/5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-primary">assignment</span>
+                        <span className="font-semibold text-primary text-sm">Teacher's Assignment</span>
+                      </div>
+                      <div className="text-slate-700 dark:text-slate-200 text-sm font-medium mb-1">{assignment.name || `Task ${currentAssignmentIdx + 1}`}</div>
+                      {assignment.description && (
+                        <div className="text-xs text-slate-500 mb-1">{assignment.description}</div>
+                      )}
+                      {assignment.images && assignment.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {assignment.images.map((img, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setSelectedImage(img.url)}
+                              className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
+                            >
+                              <img src={img.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Student answer info */}
+                    <div className="p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-blue-400">person</span>
+                        <span className="font-semibold text-blue-700 dark:text-blue-300 text-sm">Student's Answer</span>
+                      </div>
+                      {/* Text Answer */}
+                      {answer && answer.textContent ? (
+                        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <p className="text-sm">{answer.textContent}</p>
+                        </div>
+                      ) : (
+                        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-400 text-sm italic">
+                          No answer submitted
+                        </div>
+                      )}
+                      {/* Images */}
+                      {answer && answer.files && answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).map((file: any, fileIdx: number) => (
+                            <button
+                              key={fileIdx}
+                              onClick={() => setSelectedImage(file.url)}
+                              className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
+                            >
+                              <img
+                                src={file.url}
+                                alt=""
+                                className="w-full h-full object-cover hover:scale-105 transition-transform"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Feedback Input */}
               <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800">
@@ -1106,57 +1191,75 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                   onChange={(e) => setReviewFeedback(e.target.value)}
                   placeholder="Write feedback for the student..."
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none min-h-[80px]"
+                  disabled={!selectedStudent.submitted}
                 />
               </div>
 
               {/* Status Selection */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setReviewStatus('approved')}
-                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                    reviewStatus === 'approved'
-                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                      : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-2xl ${reviewStatus === 'approved' ? 'text-green-500' : 'text-slate-400'}`}>
-                    check_circle
-                  </span>
-                  <span className={`text-sm font-medium ${reviewStatus === 'approved' ? 'text-green-600' : 'text-slate-500'}`}>
-                    Approve
-                  </span>
-                </button>
-                <button
-                  onClick={() => setReviewStatus('rejected')}
-                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                    reviewStatus === 'rejected'
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-2xl ${reviewStatus === 'rejected' ? 'text-red-500' : 'text-slate-400'}`}>
-                    cancel
-                  </span>
-                  <span className={`text-sm font-medium ${reviewStatus === 'rejected' ? 'text-red-600' : 'text-slate-500'}`}>
-                    Reject
-                  </span>
-                </button>
+              <div className="grid grid-cols-5 gap-2">
+                {['Worse', 'Bad', 'Good', 'Better', 'Perfect'].map((status) => {
+                  let color = '';
+                  let border = '';
+                  switch (status) {
+                    case 'Worse':
+                      color = reviewStatus === status ? 'bg-red-50' : 'bg-red-25';
+                      border = reviewStatus === status ? 'border-red-500' : 'border-red-200';
+                      break;
+                    case 'Bad':
+                      color = reviewStatus === status ? 'bg-orange-50' : 'bg-orange-25';
+                      border = reviewStatus === status ? 'border-orange-400' : 'border-orange-200';
+                      break;
+                    case 'Good':
+                      color = reviewStatus === status ? 'bg-blue-50' : 'bg-blue-25';
+                      border = reviewStatus === status ? 'border-blue-500' : 'border-blue-200';
+                      break;
+                    case 'Better':
+                      color = reviewStatus === status ? 'bg-green-50' : 'bg-green-25';
+                      border = reviewStatus === status ? 'border-green-500' : 'border-green-200';
+                      break;
+                    case 'Perfect':
+                      color = reviewStatus === status ? 'bg-yellow-50' : 'bg-yellow-25';
+                      border = reviewStatus === status ? 'border-yellow-400' : 'border-yellow-200';
+                      break;
+                  }
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => selectedStudent.submitted && setReviewStatus(status as any)}
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${color} ${border} ${!selectedStudent.submitted ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!selectedStudent.submitted}
+                    >
+                      <span className={`material-symbols-outlined text-2xl text-slate-500`}>
+                        {status === 'Worse' && 'sentiment_very_dissatisfied'}
+                        {status === 'Bad' && 'sentiment_dissatisfied'}
+                        {status === 'Good' && 'sentiment_satisfied'}
+                        {status === 'Better' && 'sentiment_very_satisfied'}
+                        {status === 'Perfect' && 'star'}
+                      </span>
+                      <span className={`text-xs font-medium text-slate-700`}>
+                        {status}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 mb-5 border-t border-slate-200 dark:border-slate-700">
+            <div className="p-4 mb-5 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+              >
+                Close
+              </button>
               <button
                 onClick={handleReviewSubmit}
-                disabled={isReviewing}
-                className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 ${
-                  reviewStatus === 'approved'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-red-500 text-white'
-                } disabled:opacity-50`}
+                disabled={isReviewing || !reviewStatus || !selectedStudent.submitted}
+                className={`flex-1 py-3 rounded-xl bg-blue-500 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50`}
               >
                 {isReviewing && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
-                {reviewStatus === 'approved' ? 'Approve' : 'Reject'}
+                Save
               </button>
             </div>
           </div>
@@ -1173,7 +1276,6 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
         pauseOnHover
         aria-label="Notification"
       />
-
     </div>
     );
 };

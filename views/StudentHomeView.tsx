@@ -100,12 +100,15 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -137,8 +140,17 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
 
   // Helper function to get homework status
   const getHomeworkStatus = (hw: Homework) => {
-    if (!hw.submitted) return 'pending';
-    if (hw.submission?.status === 'approved' || hw.submission?.status === 'rejected') return 'graded';
+    if (!hw.submitted) {
+      if (isOverdue(hw.deadline)) return 'overdue';
+      return 'pending';
+    }
+    if ([
+      'Worse',
+      'Bad',
+      'Good',
+      'Better',
+      'Perfect'
+    ].includes(hw.submission?.status)) return 'graded';
     return 'submitted';
   };
 
@@ -153,6 +165,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
   });
 
   const pendingCount = homeworks.filter(hw => getHomeworkStatus(hw) === 'pending').length;
+  const overdueCount = homeworks.filter(hw => getHomeworkStatus(hw) === 'overdue').length;
   const submittedCount = homeworks.filter(hw => getHomeworkStatus(hw) === 'submitted').length;
   const gradedCount = homeworks.filter(hw => getHomeworkStatus(hw) === 'graded').length;
 
@@ -277,8 +290,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
               const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
               const hwStatus = getHomeworkStatus(homework);
               const isGraded = hwStatus === 'graded';
-              const isApproved = homework.submission?.status === 'approved';
-              const isRejected = homework.submission?.status === 'rejected';
+              const statusVal = homework.submission?.status;
               
               return (
                 <div 
@@ -286,9 +298,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
                   onClick={() => navigate('STUDENT_HOMEWORK_DETAIL', homework._id)}
                   className={`bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border cursor-pointer active:scale-[0.99] transition-all ${
                     isGraded
-                      ? isApproved 
-                        ? 'border-green-200 dark:border-green-800' 
-                        : 'border-red-200 dark:border-red-800'
+                      ? 'border-slate-200 dark:border-slate-700'
                       : hwStatus === 'submitted'
                         ? 'border-blue-200 dark:border-blue-800'
                         : overdue 
@@ -299,9 +309,17 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
                   <div className="flex items-start gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
                       isGraded
-                        ? isApproved
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                        ? statusVal === 'Worse'
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                          : statusVal === 'Bad'
+                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+                            : statusVal === 'Good'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                              : statusVal === 'Better'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                                : statusVal === 'Perfect'
+                                  ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
+                                  : 'bg-slate-100 text-slate-600'
                         : hwStatus === 'submitted'
                           ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
                           : overdue 
@@ -309,23 +327,38 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
                             : 'bg-primary/10 text-primary'
                     }`}>
                       <span className="material-symbols-outlined">
-                        {isGraded ? (isApproved ? 'check_circle' : 'cancel') : hwStatus === 'submitted' ? 'schedule_send' : getCategoryIcon(homework.category)}
+                        {isGraded ? (
+                          statusVal === 'Worse' ? 'sentiment_very_dissatisfied' :
+                          statusVal === 'Bad' ? 'sentiment_dissatisfied' :
+                          statusVal === 'Good' ? 'sentiment_satisfied' :
+                          statusVal === 'Better' ? 'sentiment_very_satisfied' :
+                          statusVal === 'Perfect' ? 'star' :
+                          getCategoryIcon(homework.category)
+                        ) : hwStatus === 'submitted' ? 'schedule_send' : getCategoryIcon(homework.category)}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                           isGraded
-                            ? isApproved
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
-                              : 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                            ? statusVal === 'Worse'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                              : statusVal === 'Bad'
+                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+                                : statusVal === 'Good'
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                                  : statusVal === 'Better'
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                                    : statusVal === 'Perfect'
+                                      ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
+                                      : 'bg-slate-100 text-slate-600'
                             : hwStatus === 'submitted'
                               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
                               : overdue 
                                 ? 'bg-red-100 dark:bg-red-900/30 text-red-600' 
                                 : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
                         }`}>
-                          {isGraded ? (isApproved ? 'Approved' : 'Rejected') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
+                          {isGraded ? (statusVal || 'Graded') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase">
                           {homework.category}
@@ -336,7 +369,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">event</span>
                           <span className={overdue && !homework.submitted ? 'text-red-500 font-medium' : ''}>
-                            {formatDate(homework.deadline)}
+                            {formatDateTime(homework.deadline)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -367,7 +400,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
                   {homework.submitted && homework.submittedAt && (
                     <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">check</span>
-                      Submitted on {formatDate(homework.submittedAt)}
+                      Submitted on {formatDateTime(homework.submittedAt)}
                     </div>
                   )}
                 </div>

@@ -31,7 +31,7 @@ interface Submission {
   _id: string;
   answers: SubmissionAnswer[];
   submittedAt: string;
-  status?: 'pending' | 'approved' | 'rejected';
+  status?: 'pending' | 'Worse' | 'Bad' | 'Good' | 'Better' | 'Perfect';
   teacherComment?: string;
   reviewedAt?: string;
 }
@@ -140,6 +140,105 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
   const overdue = !isSubmitted && isOverdue(homework.deadline);
   const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
 
+  // Calculate statusConfig once so it's available for both status banner and teacher comment
+  const submissionStatus = homework.submission?.status;
+  const isWorse = submissionStatus === 'Worse';
+  const isBad = submissionStatus === 'Bad';
+  const isGood = submissionStatus === 'Good';
+  const isBetter = submissionStatus === 'Better';
+  const isPerfect = submissionStatus === 'Perfect';
+  const isPendingReview = isSubmitted && !isWorse && !isBad && !isGood && !isBetter && !isPerfect;
+
+  let statusConfig = {
+    bg: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+    iconColor: 'text-orange-600',
+    textColor: 'text-orange-700',
+    subTextColor: 'text-orange-600',
+    icon: 'pending',
+    title: 'Pending',
+    subtitle: `Deadline: ${formatDate(homework.deadline)}`
+  };
+
+  if (isWorse) {
+    statusConfig = {
+      bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      iconBg: 'bg-red-100 dark:bg-red-900/40',
+      iconColor: 'text-red-600',
+      textColor: 'text-red-700',
+      subTextColor: 'text-red-600',
+      icon: 'sentiment_very_dissatisfied',
+      title: 'Worse',
+      subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
+    };
+  } else if (isBad) {
+    statusConfig = {
+      bg: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
+      iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+      iconColor: 'text-orange-600',
+      textColor: 'text-orange-700',
+      subTextColor: 'text-orange-600',
+      icon: 'sentiment_dissatisfied',
+      title: 'Bad',
+      subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
+    };
+  } else if (isGood) {
+    statusConfig = {
+      bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+      iconColor: 'text-blue-600',
+      textColor: 'text-blue-700',
+      subTextColor: 'text-blue-600',
+      icon: 'sentiment_satisfied',
+      title: 'Good',
+      subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
+    };
+  } else if (isBetter) {
+    statusConfig = {
+      bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+      iconBg: 'bg-green-100 dark:bg-green-900/40',
+      iconColor: 'text-green-600',
+      textColor: 'text-green-700',
+      subTextColor: 'text-green-600',
+      icon: 'sentiment_very_satisfied',
+      title: 'Better',
+      subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
+    };
+  } else if (isPerfect) {
+    statusConfig = {
+      bg: 'bg-yellow-50 dark:bg-yellow-300/20 border-yellow-200 dark:border-yellow-400',
+      iconBg: 'bg-yellow-100 dark:bg-yellow-300/40',
+      iconColor: 'text-yellow-700',
+      textColor: 'text-yellow-700',
+      subTextColor: 'text-yellow-700',
+      icon: 'star',
+      title: 'Perfect',
+      subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
+    };
+  } else if (isPendingReview) {
+    statusConfig = {
+      bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+      iconColor: 'text-blue-600',
+      textColor: 'text-blue-700',
+      subTextColor: 'text-blue-600',
+      icon: 'hourglass_top',
+      title: 'Under Review',
+      subtitle: `Submitted: ${formatDate(homework.submission?.submittedAt || '')}`
+    };
+  } else if (overdue) {
+    statusConfig = {
+      bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      iconBg: 'bg-red-100 dark:bg-red-900/40',
+      iconColor: 'text-red-600',
+      textColor: 'text-red-700',
+      subTextColor: 'text-red-600',
+      icon: 'warning',
+      title: 'Overdue',
+      subtitle: `Deadline: ${formatDate(homework.deadline)}`
+    };
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -159,108 +258,32 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
       {/* Content */}
       <div className="flex-1 px-4 pb-32 overflow-y-auto">
         {/* Status Banner */}
-        {(() => {
-          const submissionStatus = homework.submission?.status;
-          const isApproved = submissionStatus === 'approved';
-          const isRejected = submissionStatus === 'rejected';
-          const isPendingReview = isSubmitted && !isApproved && !isRejected;
-          
-          let statusConfig = {
-            bg: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-            iconBg: 'bg-orange-100 dark:bg-orange-900/40',
-            iconColor: 'text-orange-600',
-            textColor: 'text-orange-700',
-            subTextColor: 'text-orange-600',
-            icon: 'pending',
-            title: 'Pending',
-            subtitle: `Deadline: ${formatDate(homework.deadline)}`
-          };
-
-          if (isApproved) {
-            statusConfig = {
-              bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-              iconBg: 'bg-green-100 dark:bg-green-900/40',
-              iconColor: 'text-green-600',
-              textColor: 'text-green-700',
-              subTextColor: 'text-green-600',
-              icon: 'check_circle',
-              title: 'Approved ✓',
-              subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
-            };
-          } else if (isRejected) {
-            statusConfig = {
-              bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-              iconBg: 'bg-red-100 dark:bg-red-900/40',
-              iconColor: 'text-red-600',
-              textColor: 'text-red-700',
-              subTextColor: 'text-red-600',
-              icon: 'cancel',
-              title: 'Rejected',
-              subtitle: homework.submission?.reviewedAt ? `Reviewed: ${formatDate(homework.submission.reviewedAt)}` : ''
-            };
-          } else if (isPendingReview) {
-            statusConfig = {
-              bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-              iconBg: 'bg-blue-100 dark:bg-blue-900/40',
-              iconColor: 'text-blue-600',
-              textColor: 'text-blue-700',
-              subTextColor: 'text-blue-600',
-              icon: 'hourglass_top',
-              title: 'Under Review',
-              subtitle: `Submitted: ${formatDate(homework.submission?.submittedAt || '')}`
-            };
-          } else if (overdue) {
-            statusConfig = {
-              bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-              iconBg: 'bg-red-100 dark:bg-red-900/40',
-              iconColor: 'text-red-600',
-              textColor: 'text-red-700',
-              subTextColor: 'text-red-600',
-              icon: 'warning',
-              title: 'Overdue',
-              subtitle: `Deadline: ${formatDate(homework.deadline)}`
-            };
-          }
-
-          return (
-            <div className={`rounded-2xl p-4 mb-4 border ${statusConfig.bg}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${statusConfig.iconBg}`}>
-                  <span className={`material-symbols-outlined text-2xl ${statusConfig.iconColor}`}>
-                    {statusConfig.icon}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className={`font-bold ${statusConfig.textColor}`}>{statusConfig.title}</p>
-                  <p className={`text-sm ${statusConfig.subTextColor}`}>{statusConfig.subtitle}</p>
-                </div>
-              </div>
+        <div className={`rounded-2xl p-4 mb-4 border ${statusConfig.bg}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${statusConfig.iconBg}`}>
+              <span className={`material-symbols-outlined text-2xl ${statusConfig.iconColor}`}>
+                {statusConfig.icon}
+              </span>
             </div>
-          );
-        })()}
+            <div className="flex-1">
+              <p className={`font-bold ${statusConfig.textColor}`}>{statusConfig.title}</p>
+              <p className={`text-sm ${statusConfig.subTextColor}`}>{statusConfig.subtitle}</p>
+            </div>
+          </div>
+        </div>
 
         {/* Teacher Feedback */}
         {homework.submission?.teacherComment && (
-          <div className={`rounded-2xl p-4 mb-4 border ${
-            homework.submission.status === 'approved' 
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-          }`}>
+          <div className={`rounded-2xl p-4 mb-4 border ${statusConfig.bg}`}>
             <div className="flex items-start gap-3">
-              <span className={`material-symbols-outlined text-xl ${
-                homework.submission.status === 'approved' ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span className={`material-symbols-outlined text-xl ${statusConfig.iconColor}`}>
                 comment
               </span>
               <div>
-                <p className={`font-semibold text-sm mb-1 ${
-                  homework.submission.status === 'approved' ? 'text-green-700' : 'text-red-700'
-                }`}>
+                <p className={`font-semibold text-sm mb-1 ${statusConfig.textColor}`}>
                   Teacher's Comment:
                 </p>
-                <p className={`text-sm ${
-                  homework.submission.status === 'approved' ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <p className={`text-sm ${statusConfig.textColor}`}>
                   {homework.submission.teacherComment}
                 </p>
               </div>

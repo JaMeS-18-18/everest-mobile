@@ -267,12 +267,15 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -437,7 +440,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                     </div>
                     <p className="font-semibold truncate">{homework.description}</p>
                     <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                      <span>Deadline: {formatDate(homework.deadline)}</span>
+                      <span>Deadline: {formatDateTime(homework.deadline)}</span>
                       {homework.submissionStats && (
                         <span className="flex items-center gap-1 font-medium">
                           <span className="material-symbols-outlined text-sm">group</span>
@@ -450,8 +453,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                   </div>
                 </div>
 
-                {/* Assignments Preview */}
-                <div className="flex flex-wrap gap-2 mb-3">
+                {/* <div className="flex flex-wrap gap-2 mb-3">
                   {homework.assignments.map((assignment) => (
                     <span 
                       key={assignment._id}
@@ -462,7 +464,6 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                   ))}
                 </div>
 
-                {/* Images Preview */}
                 {totalImages > 0 && (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar">
                     {homework.assignments.flatMap(a => a.images).slice(0, 4).map((img, idx) => (
@@ -492,7 +493,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                     <span className="material-symbols-outlined text-sm">link</span>
                     View Link
                   </a>
-                )}
+                )} */}
               </div>
             );
           })
@@ -642,7 +643,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
                       Deadline <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
