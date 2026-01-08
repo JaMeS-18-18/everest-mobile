@@ -50,11 +50,10 @@ interface Homework {
   updatedAt: string;
 }
 
-interface StudentHomeViewProps {
-  navigate: (view: View, id?: string) => void;
-}
+import { useNavigate } from 'react-router-dom';
 
-const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
+const StudentHomeView: React.FC = () => {
+  const navigate = useNavigate();
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -295,7 +294,7 @@ const StudentHomeView: React.FC<StudentHomeViewProps> = ({ navigate }) => {
               return (
                 <div 
                   key={homework._id}
-                  onClick={() => navigate('STUDENT_HOMEWORK_DETAIL', homework._id)}
+                  onClick={() => navigate(`/student/homework/${homework._id}`)}
                   className={`bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border cursor-pointer active:scale-[0.99] transition-all ${
                     isGraded
                       ? 'border-slate-200 dark:border-slate-700'

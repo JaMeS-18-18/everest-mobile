@@ -29,8 +29,9 @@ const AdminTeachersView: React.FC = () => {
   const [showMenuId, setShowMenuId] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState<{ open: boolean, teacher?: Teacher }>({ open: false });
   const [showDelete, setShowDelete] = useState<{ open: boolean, teacher?: Teacher }>({ open: false });
-  const [editForm, setEditForm] = useState({ fullName: '', username: '', phone: '', subject: '' });
+  const [editForm, setEditForm] = useState({ fullName: '', username: '', phone: '', subject: '', password: '' });
   const [editLoading, setEditLoading] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +137,7 @@ const AdminTeachersView: React.FC = () => {
                         username: t.username,
                         phone: t.phone,
                         subject: t.subject || '',
+                        password: t.password || '',
                       });
                       setShowMenuId(null);
                     }}
@@ -206,6 +208,26 @@ const AdminTeachersView: React.FC = () => {
                         onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
                         required
                       />
+                      <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Password</label>
+                      <div className="relative mb-2">
+                        <input
+                          className="w-full p-3 pr-12 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                          type={showEditPassword ? 'text' : 'password'}
+                          minLength={8}
+                          value={editForm.password}
+                          onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                          required
+                        />
+                        <span
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer select-none"
+                          onClick={() => setShowEditPassword(v => !v)}
+                          title={showEditPassword ? 'Hide password' : 'Show password'}
+                        >
+                          <span className="material-symbols-outlined">
+                            {showEditPassword ? 'visibility_off' : 'visibility'}
+                          </span>
+                        </span>
+                      </div>
                       <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Subject</label>
                       <input
                         className="w-full mb-2 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"

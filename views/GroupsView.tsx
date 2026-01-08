@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { View } from '../types';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 interface Student {
@@ -21,11 +22,8 @@ interface Group {
   updatedAt: string;
 }
 
-interface GroupsViewProps {
-  navigate: (view: View, groupId?: string) => void;
-}
-
-const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
+const GroupsView: React.FC = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +143,7 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
             </div>
           </div>
           <button 
-            onClick={() => navigate('SETTINGS')}
+            onClick={() => navigate('/settings')}
             className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
           >
             <span className="material-symbols-outlined text-slate-500">settings</span>
@@ -177,7 +175,7 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
           filteredGroups.map((group) => (
             <div 
               key={group._id} 
-              onClick={() => navigate('GROUP_DETAIL', group._id)}
+              onClick={() => navigate(`/groups/${group._id}`)}
               className="group relative flex items-stretch justify-between gap-4 rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
             >
               <div className="flex flex-col justify-between flex-1">
@@ -236,7 +234,7 @@ const GroupsView: React.FC<GroupsViewProps> = ({ navigate }) => {
 
       <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-6 pointer-events-none">
         <button 
-          onClick={() => navigate('CREATE_GROUP')}
+          onClick={() => navigate('/groups/create')}
           className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
           style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
         >

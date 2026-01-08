@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
-interface CreateGroupViewProps {
-  onBack: () => void;
-}
-
-const CreateGroupView: React.FC<CreateGroupViewProps> = ({ onBack }) => {
+const CreateGroupView: React.FC = () => {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:30');
@@ -50,12 +48,16 @@ const CreateGroupView: React.FC<CreateGroupViewProps> = ({ onBack }) => {
         daysOfWeek,
       });
       if (response.data.success) {
-        onBack();
+        navigate(-1);
       } else {
         setError(response.data.message || 'Failed to create group');
       }
-    } catch (err) {
-      setError('Failed to create group');
+    } catch (err: any) {
+      if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Failed to create group');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -64,7 +66,7 @@ const CreateGroupView: React.FC<CreateGroupViewProps> = ({ onBack }) => {
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-black">
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-4 pt-12 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full text-slate-800 dark:text-white">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full text-slate-800 dark:text-white">
           <span className="material-symbols-outlined">arrow_back_ios_new</span>
         </button>
         <h2 className="text-lg font-bold">Create Group</h2>
@@ -136,3 +138,4 @@ const CreateGroupView: React.FC<CreateGroupViewProps> = ({ onBack }) => {
 };
 
 export default CreateGroupView;
+

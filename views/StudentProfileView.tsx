@@ -1,7 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { View } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { View } from '@/types';
 
 interface GroupInfo {
   _id: string;
@@ -69,7 +71,8 @@ interface StudentProfileViewProps {
   navigate: (view: View) => void;
 }
 
-const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBack, navigate }) => {
+const StudentProfileView: React.FC = () => {
+  const { studentId } = useParams();
   const [student, setStudent] = useState<Student | null>(null);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,15 +122,24 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
     }
   };
 
+  const navigate = useNavigate();
   const handleDelete = async () => {
     setIsSaving(true);
     try {
-      await api.delete(`/students/${student?._id}`);
+      const res = await api.delete(`/students/${student?._id}`);
       setIsDeleteConfirm(false);
       setIsEditModalOpen(false);
-      onBack();
-    } catch (err) {
-      alert('Failed to delete student');
+      if (res.data && res.data.success) {
+        navigate(-1);
+      } else {
+        alert(res.data?.message || 'Failed to delete student');
+      }
+    } catch (err: any) {
+      if (err?.response?.data?.message) {
+        alert(err.response.data.message);
+      } else {
+        alert('Failed to delete student');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -258,7 +270,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error || 'Student not found'}</p>
         <button
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
           Go Back
@@ -273,7 +285,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
   return (
     <div className="flex flex-col h-full pb-24">
       <header className="sticky top-0 z-30 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-4 pt-12 flex items-center justify-between">
-        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <h2 className="text-lg font-bold">Student Profile</h2>
@@ -302,7 +314,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                 <h2 className="text-xl font-bold mb-6">Edit Student</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Profile Image</label>
+                    {/* <label className="text-sm font-medium mb-1 block">Profile Image</label>
                     <input type="file" accept="image/*" onChange={async e => {
                       const file = e.target.files?.[0];
                       if (!file) return;
@@ -318,7 +330,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                       } catch (err) {
                         alert('Failed to upload image');
                       }
-                    }} />
+                    }} /> */}
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-1 block">Full Name</label>
@@ -632,11 +644,11 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                               <button
                                 key={imgIdx}
                                 type="button"
-                                onClick={() => setPreviewImage(img.path || img.url)}
+                                onClick={() => setPreviewImage(img.url)}
                                 className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                               >
                                 <img
-                                  src={img.path || img.url}
+                                  src={img.url}
                                   alt={img.filename || ''}
                                   className="w-full h-full object-cover hover:scale-105 transition-transform"
                                 />
@@ -660,7 +672,7 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
                             )}
                             {answer.files && answer.files.length > 0 && (
                               <div className="flex flex-wrap gap-2">
-                                {answer.files.filter(f => f.mimetype?.startsWith('image/')).map((file, fileIdx) => (
+                                {answer.files.filter(f => f.mimetype?.startsWith('image/')).map((file: { path: any; }, fileIdx: any) => (
                                   <button
                                     key={fileIdx}
                                     type="button"
@@ -789,3 +801,4 @@ const StudentProfileView: React.FC<StudentProfileViewProps> = ({ studentId, onBa
 };
 
 export default StudentProfileView;
+

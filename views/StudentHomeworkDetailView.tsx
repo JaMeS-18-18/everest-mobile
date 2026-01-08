@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { View } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { View } from '@/types';
 
 // Helper to get correct image URL (Cloudinary or legacy)
 function getImageUrl(img: { path?: string; url?: string }) {
@@ -58,17 +60,18 @@ interface Homework {
   canSubmit: boolean;
 }
 
-interface StudentHomeworkDetailViewProps {
-  homeworkId: string;
-  navigate: (view: View, id?: string) => void;
-  onBack: () => void;
-}
 
-const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ homeworkId, navigate, onBack }) => {
+const StudentHomeworkDetailView: React.FC = () => {
+  const { homeworkId } = useParams();
+  const navigate = useNavigate();
   const [homework, setHomework] = useState<Homework | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const onBack = () => {
+    navigate(-1);
+  };
 
   useEffect(() => {
     fetchHomework();
@@ -79,7 +82,7 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
       setIsLoading(true);
       const response = await api.get(`/homework/${homeworkId}`);
       const data = response.data;
-      
+
       if (data.success) {
         setHomework(data.data);
       } else {
@@ -94,8 +97,8 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
@@ -135,7 +138,7 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error || 'Homework not found'}</p>
-        <button 
+        <button
           onClick={onBack}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
@@ -253,7 +256,7 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background-light dark:bg-background-dark p-4 pt-12">
         <div className="flex items-center justify-between">
-          <button 
+          <button
             onClick={onBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
           >
@@ -328,7 +331,7 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
               </span>
             </div> */}
             {homework.link && (
-              <a 
+              <a
                 href={homework.link}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -340,45 +343,6 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
             )}
           </div>
         </div>
-
-        {/* Assignments from Teacher */}
-        {homework.assignments.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-bold text-lg mb-3">Tasks ({homework.assignments.length})</h3>
-            <div className="space-y-3">
-              {homework.assignments.map((assignment, index) => (
-                <div 
-                  key={assignment._id}
-                  className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg font-bold">
-                      {index + 1}
-                    </div>
-                    <h4 className="font-semibold flex-1">{assignment.name}</h4>
-                  </div>
-                  {assignment.images.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {assignment.images.map((img, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setSelectedImage(getImageUrl(img))}
-                          className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
-                        >
-                          <img 
-                            src={getImageUrl(img)}
-                            alt=""
-                            className="w-full h-full object-cover hover:scale-105 transition-transform"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* My Submission */}
         {isSubmitted && homework.submission && (
@@ -404,11 +368,11 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
                           {answer.files.map((file, fileIdx) => (
                             <button
                               key={fileIdx}
-                              onClick={() => setSelectedImage(file.path)}
+                              onClick={() => setSelectedImage(getImageUrl(file))}
                               className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
                             >
-                              <img 
-                                src={file.path}
+                              <img
+                                src={getImageUrl(file)}
                                 alt=""
                                 className="w-full h-full object-cover hover:scale-105 transition-transform"
                               />
@@ -423,13 +387,52 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
             </div>
           </div>
         )}
+
+        {/* Assignments from Teacher */}
+        {homework.assignments.length > 0 && (
+          <div className="mb-4">
+            <h3 className="font-bold text-lg mb-3">Tasks ({homework.assignments.length})</h3>
+            <div className="space-y-3">
+              {homework.assignments.map((assignment, index) => (
+                <div
+                  key={assignment._id}
+                  className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg font-bold">
+                      {index + 1}
+                    </div>
+                    <h4 className="font-semibold flex-1">{assignment.name}</h4>
+                  </div>
+                  {assignment.images.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {assignment.images.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedImage(getImageUrl(img))}
+                          className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
+                        >
+                          <img
+                            src={getImageUrl(img)}
+                            alt=""
+                            className="w-full h-full object-cover hover:scale-105 transition-transform"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Submit Button */}
       {homework.canSubmit && !isSubmitted && (
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-gradient-to-t from-background-light dark:from-background-dark to-transparent pt-8">
           <button
-            onClick={() => navigate('STUDENT_SUBMIT_HOMEWORK', homeworkId)}
+            onClick={() => navigate(`/student/submit-homework/${homeworkId}`)}
             className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined">upload_file</span>
@@ -440,17 +443,17 @@ const StudentHomeworkDetailView: React.FC<StudentHomeworkDetailViewProps> = ({ h
 
       {/* Image Preview Modal */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
           onClick={() => setSelectedImage(null)}
         >
-          <button 
+          <button
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white"
             onClick={() => setSelectedImage(null)}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
-          <img 
+          <img
             src={selectedImage}
             alt=""
             className="max-w-full max-h-full object-contain"

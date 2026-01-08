@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+// Version is injected at build time from package.json
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 import { UserRole } from '../types';
 import api from '../api';
 
@@ -268,7 +270,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         </button>
 
         <div className="text-center text-[10px] text-slate-400 pb-8">
-          Version 1.0.0
+          Version {APP_VERSION}
         </div>
       </div>
 

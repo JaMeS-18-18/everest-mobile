@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { View } from '../types';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 interface GroupInfo {
@@ -25,11 +26,8 @@ const getProfileImageUrl = (url?: string) => {
   return `${API_BASE_URL}${url}`;
 };
 
-interface StudentsViewProps {
-  navigate: (view: View, studentId?: string) => void;
-}
-
-const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
+const StudentsView: React.FC = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +114,7 @@ const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
             {filteredStudents.map(student => (
               <div 
                 key={student._id} 
-                onClick={() => navigate('STUDENT_PROFILE', student._id)}
+                onClick={() => navigate(`/students/${student._id}`)}
                 className="flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-all cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary overflow-hidden">
@@ -156,7 +154,7 @@ const StudentsView: React.FC<StudentsViewProps> = ({ navigate }) => {
 
       <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-4 pointer-events-none">
         <button 
-          onClick={() => navigate('CREATE_STUDENT')}
+          onClick={() => navigate('/students/create')}
           className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
           style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
         >

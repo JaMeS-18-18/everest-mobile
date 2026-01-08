@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, View } from './types';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { UserRole } from './types';
 import LoginView from './views/LoginView';
 import DashboardView from './views/DashboardView';
 import AdminTeachersView from './views/AdminTeachersView';
@@ -19,79 +20,30 @@ import StudentHomeView from './views/StudentHomeView';
 import StudentHomeworkDetailView from './views/StudentHomeworkDetailView';
 import BottomNav from './components/BottomNav';
 import 'react-toastify/dist/ReactToastify.css';
+
 const App: React.FC = () => {
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [currentView, setCurrentView] = useState<View>(() => {
-    const saved = localStorage.getItem('currentView');
-    return saved ? (saved as View) : 'LOGIN';
-  });
-  // Dark mode state from localStorage
+  // Example: dark mode state (can be expanded as needed)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const stored = localStorage.getItem('darkMode');
     return stored === 'true';
   });
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('selectedGroupId');
-    return saved || null;
-  });
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('selectedStudentId');
-    return saved || null;
-  });
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('selectedTaskId');
-    return saved || null;
-  });
-  const [selectedHomeworkId, setSelectedHomeworkId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('selectedHomeworkId');
-    return saved || null;
-  });
 
-  // Check for existing session on app load
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    if (token && user) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [role, setRole] = useState<UserRole | null>(() => {
+    // Try to restore role from localStorage on reload
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
       try {
-        const userData = JSON.parse(user);
-        let userRole: UserRole = UserRole.STUDENT;
-        if (userData.role === 'teacher') userRole = UserRole.TEACHER;
-        if (userData.role === 'admin') userRole = UserRole.ADMIN;
-        setRole(userRole);
-        setCurrentView((prev) => {
-          if (prev === 'LOGIN') {
-            if (userRole === UserRole.TEACHER) return 'GROUPS';
-            if (userRole === UserRole.ADMIN) return 'ADMIN_TEACHERS';
-            return 'STUDENT_HOME';
-          }
-          return prev;
-        });
-        // Restore selected IDs for detail views
-        const savedView = localStorage.getItem('currentView');
-        if (savedView === 'GROUP_DETAIL') {
-          const savedGroupId = localStorage.getItem('selectedGroupId');
-          if (savedGroupId) setSelectedGroupId(savedGroupId);
-        }
-        if (savedView === 'STUDENT_PROFILE') {
-          const savedStudentId = localStorage.getItem('selectedStudentId');
-          if (savedStudentId) setSelectedStudentId(savedStudentId);
-        }
-        if (savedView === 'TASK_DETAIL') {
-          const savedTaskId = localStorage.getItem('selectedTaskId');
-          if (savedTaskId) setSelectedTaskId(savedTaskId);
-        }
-        if (savedView === 'STUDENT_HOMEWORK_DETAIL') {
-          const savedHomeworkId = localStorage.getItem('selectedHomeworkId');
-          if (savedHomeworkId) setSelectedHomeworkId(savedHomeworkId);
-        }
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+        const user = JSON.parse(userStr);
+        if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
+        if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
+        return UserRole.STUDENT;
+      } catch {}
     }
-  }, []);
+    return null;
+  });
 
-  // Persist dark mode to localStorage
   useEffect(() => {
     localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
     if (isDarkMode) {
@@ -101,105 +53,55 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  const navigate = (view: View, id?: string) => {
-    if (view === 'GROUP_DETAIL' && id) {
-      setSelectedGroupId(id);
-      localStorage.setItem('selectedGroupId', id);
+
+
+  // Simple login handler for demonstration (expand as needed)
+  const handleLogin = (role: UserRole) => {
+    setRole(role);
+    if (role === UserRole.TEACHER) {
+      navigate('/groups', { replace: true });
+    } else if (role === UserRole.ADMIN) {
+      navigate('/admin/teachers', { replace: true });
+    } else {
+      navigate('/student/home', { replace: true });
     }
-    if (view === 'STUDENT_PROFILE' && id) {
-      setSelectedStudentId(id);
-      localStorage.setItem('selectedStudentId', id);
-    }
-    if (view === 'TASK_DETAIL' && id) {
-      setSelectedTaskId(id);
-      localStorage.setItem('selectedTaskId', id);
-    }
-    if (view === 'STUDENT_HOMEWORK_DETAIL' && id) {
-      setSelectedHomeworkId(id);
-      localStorage.setItem('selectedHomeworkId', id);
-    }
-    if (view === 'STUDENT_SUBMIT_HOMEWORK' && id) {
-      setSelectedHomeworkId(id);
-      localStorage.setItem('selectedHomeworkId', id);
-    }
-    setCurrentView(view);
-    localStorage.setItem('currentView', view);
-    window.scrollTo(0, 0);
   };
 
-  const handleLogin = (selectedRole: UserRole) => {
-    setRole(selectedRole);
-    // Teacher goes to GROUPS, Student goes to STUDENT_HOME, Admin goes to ADMIN_TEACHERS
-    if (selectedRole === UserRole.TEACHER) navigate('GROUPS');
-    else if (selectedRole === UserRole.ADMIN) navigate('ADMIN_TEACHERS');
-    else navigate('STUDENT_HOME');
-  };
-
+  // Logout handler
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setRole(null);
-    navigate('LOGIN');
-  };
-
-  const renderView = () => {
-    switch (currentView) {
-            case 'ADMIN_TEACHERS':
-              return <AdminTeachersView />;
-      case 'LOGIN':
-        return <LoginView onLogin={handleLogin} />;
-      case 'DASHBOARD':
-        return <DashboardView role={role!} navigate={navigate} />;
-      case 'STUDENT_HOME':
-        return <StudentHomeView navigate={navigate} />;
-      case 'STUDENT_HOMEWORK_DETAIL':
-        return <StudentHomeworkDetailView homeworkId={selectedHomeworkId!} navigate={navigate} onBack={() => navigate('STUDENT_HOME')} />;
-      case 'STUDENT_SUBMIT_HOMEWORK':
-        return <SubmitHomeworkView homeworkId={selectedHomeworkId!} onBack={() => navigate('STUDENT_HOMEWORK_DETAIL', selectedHomeworkId!)} onSuccess={() => navigate('STUDENT_HOMEWORK_DETAIL', selectedHomeworkId!)} />;
-      case 'GROUPS':
-        return <GroupsView navigate={navigate} />;
-      case 'GROUP_DETAIL':
-        return <GroupDetailView groupId={selectedGroupId!} navigate={navigate} onBack={() => navigate('GROUPS')} />;
-      case 'CREATE_GROUP':
-        return <CreateGroupView onBack={() => navigate('GROUPS')} />;
-      case 'STUDENTS':
-        return <StudentsView navigate={navigate} />;
-      case 'CREATE_STUDENT':
-        return <CreateStudentView onBack={() => navigate('STUDENTS')} />;
-      case 'STUDENT_PROFILE':
-        return <StudentProfileView studentId={selectedStudentId!} onBack={() => navigate('STUDENTS')} navigate={navigate} />;
-      case 'TASKS':
-        return <TasksView navigate={navigate} />;
-      case 'TASK_DETAIL':
-        return <TaskDetailView taskId={selectedTaskId!} navigate={navigate} onBack={() => navigate('TASKS')} />;
-      case 'SUBMIT_HOMEWORK':
-        return <SubmitHomeworkView onBack={() => navigate('DASHBOARD')} />;
-      case 'GRADING':
-        return <GradingView onBack={() => navigate('STUDENT_PROFILE')} />;
-      case 'NOTIFICATIONS':
-        return <NotificationsView role={role!} onBack={() => navigate('DASHBOARD')} />;
-      case 'SETTINGS':
-        return (
-          <SettingsView 
-            role={role!} 
-            isDarkMode={isDarkMode} 
-            setIsDarkMode={setIsDarkMode} 
-            onLogout={handleLogout} 
-            onBack={() => navigate('DASHBOARD')} 
-          />
-        );
-      default:
-        return <DashboardView role={role!} navigate={navigate} />;
-    }
+    localStorage.clear()
+    // Optionally clear other session/localStorage items here
+    navigate('/login', { replace: true });
   };
 
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto relative bg-background-light dark:bg-background-dark overflow-x-hidden">
       <div className="flex-1">
-        {renderView()}
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginView onLogin={handleLogin} />} />
+          <Route path="/dashboard" element={<DashboardView />} />
+          <Route path="/admin/teachers" element={<AdminTeachersView />} />
+          <Route path="/groups" element={<GroupsView />} />
+          <Route path="/groups/:groupId" element={<GroupDetailView />} />
+          <Route path="/groups/create" element={<CreateGroupView />} />
+          <Route path="/students" element={<StudentsView />} />
+          <Route path="/students/create" element={<CreateStudentView />} />
+          <Route path="/students/:studentId" element={<StudentProfileView />} />
+          <Route path="/tasks" element={<TasksView />} />
+          <Route path="/tasks/:taskId" element={<TaskDetailView />} />
+          <Route path="/notifications" element={<NotificationsView />} />
+          <Route path="/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+          <Route path="/grading" element={<GradingView />} />
+          <Route path="/student/home" element={<StudentHomeView />} />
+          <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
+          <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
+        </Routes>
       </div>
-      {currentView !== 'LOGIN' && currentView !== 'CREATE_STUDENT' && currentView !== 'CREATE_GROUP' && currentView !== 'STUDENT_HOMEWORK_DETAIL' && currentView !== 'STUDENT_SUBMIT_HOMEWORK' && (
-        <BottomNav role={role!} currentView={currentView} navigate={navigate} />
+      {/* TODO: Update BottomNav to use location.pathname for active state */}
+      {location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+        <BottomNav role={role || undefined} />
       )}
     </div>
   );

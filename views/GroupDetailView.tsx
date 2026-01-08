@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { View } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -24,13 +25,9 @@ interface Group {
   updatedAt: string;
 }
 
-interface GroupDetailViewProps {
-  groupId: string;
-  navigate: (view: View) => void;
-  onBack: () => void;
-}
-
-const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, onBack }) => {
+const GroupDetailView: React.FC = () => {
+  const { groupId } = useParams();
+  const navigate = useNavigate();
   const [group, setGroup] = useState<Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +140,9 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
     try {
       const response = await api.delete(`/groups/${group._id}`);
       if (response.data.success) {
-        onBack();
+        navigate(-1);
+      } else {
+        toast.error(response.data.message || 'Failed to delete group');
       }
     } catch (err) {
       toast.error('Failed to delete group');
@@ -171,7 +170,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error || 'Group not found'}</p>
         <button 
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
           Go Back
@@ -188,7 +187,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
       <div className="p-4 pt-12">
         <div className="flex items-center justify-between mb-4">
           <button 
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -258,7 +257,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({ groupId, navigate, on
               <div 
                 key={student._id}
                 className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-primary/40 transition-all"
-                onClick={() => navigate('STUDENT_PROFILE', student._id)}
+                onClick={() => navigate(`/students/${student._id}`)}
               >
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
                   {student.fullName.charAt(0).toUpperCase()}

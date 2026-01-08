@@ -1,30 +1,30 @@
 
 import React from 'react';
-import { UserRole, View } from '../types';
+import { UserRole } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface BottomNavProps {
-  role: UserRole;
-  currentView: View;
-  navigate: (view: View) => void;
+  role?: UserRole;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ role, currentView, navigate }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  // Define tabs with route paths
   const teacherTabs = [
-    { label: 'Groups', icon: 'groups', view: 'GROUPS' as View },
-    { label: 'Students', icon: 'school', view: 'STUDENTS' as View },
-    { label: 'Tasks', icon: 'assignment', view: 'TASKS' as View },
-    { label: 'Profile', icon: 'person', view: 'SETTINGS' as View },
+    { label: 'Groups', icon: 'groups', path: '/groups' },
+    { label: 'Students', icon: 'school', path: '/students' },
+    { label: 'Tasks', icon: 'assignment', path: '/tasks' },
+    { label: 'Profile', icon: 'person', path: '/settings' },
   ];
-
   const studentTabs = [
-    { label: 'Home', icon: 'home', view: 'STUDENT_HOME' as View },
-    { label: 'Profile', icon: 'person', view: 'SETTINGS' as View },
+    { label: 'Home', icon: 'home', path: '/student/home' },
+    { label: 'Profile', icon: 'person', path: '/settings' },
   ];
-
   const adminTabs = [
-    { label: 'Home', icon: 'groups', view: 'ADMIN_TEACHERS' as View },
-    { label: 'Profile', icon: 'person', view: 'SETTINGS' as View },
+    { label: 'Home', icon: 'groups', path: '/admin/teachers' },
+    { label: 'Profile', icon: 'person', path: '/settings' },
   ];
 
   let tabs = studentTabs;
@@ -32,28 +32,31 @@ const BottomNav: React.FC<BottomNavProps> = ({ role, currentView, navigate }) =>
   if (role === UserRole.ADMIN) tabs = adminTabs;
 
   // Helper to check if tab should be highlighted
-  const isTabActive = (tabView: View) => {
-    if (currentView === tabView) return true;
-    // Highlight Home for student homework detail
-    if (tabView === 'STUDENT_HOME' && currentView === 'STUDENT_HOMEWORK_DETAIL') return true;
-    // Highlight Tasks for task detail
-    if (tabView === 'TASKS' && currentView === 'TASK_DETAIL') return true;
-    // Highlight Groups for group detail
-    if (tabView === 'GROUPS' && (currentView === 'GROUP_DETAIL' || currentView === 'CREATE_GROUP')) return true;
-    // Highlight Students for student profile
-    if (tabView === 'STUDENTS' && (currentView === 'STUDENT_PROFILE' || currentView === 'CREATE_STUDENT')) return true;
-    return false;
-  };
+  const isTabActive = (tabPath: string) => {
+    // For teacher's Students tab, active for both /students and /students/:studentId
+    if (role === UserRole.TEACHER && tabPath === '/students') {
+      return location.pathname === '/students' || /^\/students\/[\w-]+$/.test(location.pathname);
+    }
+    // For teacher's Groups tab, active for both /groups and /groups/:groupId
+    if (role === UserRole.TEACHER && tabPath === '/groups') {
+      return location.pathname === '/groups' || /^\/groups\/[\w-]+$/.test(location.pathname);
+    }
+    // For teacher's Tasks tab, active for both /tasks and /tasks/:taskId
+    if (role === UserRole.TEACHER && tabPath === '/tasks') {
+      return location.pathname === '/tasks' || /^\/tasks\/[\w-]+$/.test(location.pathname);
+    }
+    return location.pathname === tabPath;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 pb-safe z-40">
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map((tab) => {
-          const isActive = isTabActive(tab.view);
+          const isActive = isTabActive(tab.path);
           return (
             <button
               key={tab.label}
-              onClick={() => navigate(tab.view)}
+              onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
                 isActive ? 'text-primary' : 'text-text-secondary-light dark:text-text-secondary-dark'
               }`}

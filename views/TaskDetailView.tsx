@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { View } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { ToastContainer, toast } from 'react-toastify';
 
@@ -65,13 +66,9 @@ interface EditTaskItem {
   existingImages: ImageFile[];
 }
 
-interface TaskDetailViewProps {
-  taskId: string;
-  navigate: (view: View) => void;
-  onBack: () => void;
-}
-
-const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBack }) => {
+const TaskDetailView: React.FC = () => {
+  const { taskId } = useParams();
+  const navigate = useNavigate();
   const [homework, setHomework] = useState<Homework | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -254,6 +251,10 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
     setEditTasks(editTasks.map(t => t.id === taskId ? { ...t, existingImages: t.existingImages.filter((_, i) => i !== imageIndex) } : t));
   };
 
+  function onBack() {
+  navigate(-1);
+}
+
   const handleEdit = async () => {
     const validTasks = editTasks.filter(t => t.title.trim());
     if (validTasks.length === 0) {
@@ -327,17 +328,16 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
     try {
       setIsDeleting(true);
       const response = await api.delete(`/homework/${taskId}`);
-
       if (response.data.success) {
+        setShowDeleteModal(false);
         onBack();
       } else {
-        throw new Error(response.data.message || 'Failed to delete homework');
+        toast.error(response.data.message || 'Failed to delete homework');
       }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to delete homework');
     } finally {
       setIsDeleting(false);
-      setShowDeleteModal(false);
     }
   };
 
@@ -518,13 +518,13 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
               {homework.studentIds.map((student) => (
                 <button 
                   key={student._id}
-                  onClick={() => student.submitted && openReviewModal(student)}
-                  disabled={!student.submitted}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                  onClick={() => openReviewModal(student)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
                     student.submitted 
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md' 
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 cursor-default'
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-100'
                   }`}
+                  style={{ pointerEvents: 'auto', zIndex: 1 }}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     student.submitted 
@@ -693,15 +693,15 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                   </span>
                 </div>
                 {assignment.images.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {assignment.images.map((img, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setSelectedImage(img.path || img.url)}
-                        className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
+                        onClick={() => setSelectedImage(img.url)}
+                        className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                       >
                         <img 
-                          src={img.path || img.url}
+                          src={img.url}
                           alt=""
                           className="w-full h-full object-cover hover:scale-105 transition-transform"
                         />
@@ -804,7 +804,7 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                             {task.existingImages.map((img, imgIndex) => (
                               <div key={imgIndex} className="relative">
                                 <img 
-                                  src={img.path || img.url} 
+                                  src={img.url} 
                                   alt="" 
                                   className="w-14 h-14 rounded-lg object-cover"
                                 />
@@ -1135,10 +1135,10 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                           {assignment.images.map((img, idx) => (
                             <button
                               key={idx}
-                              onClick={() => setSelectedImage(img.path || img.url)}
+                              onClick={() => setSelectedImage(img.url)}
                               className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                             >
-                              <img src={img.path || img.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                              <img src={img.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
                             </button>
                           ))}
                         </div>
@@ -1162,12 +1162,12 @@ const TaskDetailView: React.FC<TaskDetailViewProps> = ({ taskId, navigate, onBac
                       )}
                       {/* Images */}
                       {answer && answer.files && answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).length > 0 && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-wrap gap-2 mt-2">
                           {answer.files.filter((f: any) => f.mimetype?.startsWith('image/')).map((file: any, fileIdx: number) => (
                             <button
                               key={fileIdx}
                               onClick={() => setSelectedImage(file.path)}
-                              className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
+                              className="aspect-square w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"
                             >
                               <img
                                 src={file.path}

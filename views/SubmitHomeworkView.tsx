@@ -39,13 +39,11 @@ interface TaskAnswer {
   completed: boolean;
 }
 
-interface SubmitHomeworkViewProps {
-  homeworkId: string;
-  onBack: () => void;
-  onSuccess: () => void;
-}
+import { useParams, useNavigate } from 'react-router-dom';
 
-const SubmitHomeworkView: React.FC<SubmitHomeworkViewProps> = ({ homeworkId, onBack, onSuccess }) => {
+const SubmitHomeworkView: React.FC = () => {
+  const { homeworkId } = useParams();
+  const navigate = useNavigate();
   const [homework, setHomework] = useState<Homework | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +128,7 @@ const SubmitHomeworkView: React.FC<SubmitHomeworkViewProps> = ({ homeworkId, onB
       });
 
       if (response.data.success) {
-        onSuccess();
+        navigate(-1); // Go back to previous page or use navigate('/some-path') if you want a specific route
       } else {
         throw new Error(response.data.message || 'Failed to submit homework');
       }
@@ -250,6 +248,8 @@ const formatDate = (dateString: string) => {
       </div>
     );
   }
+
+  const onBack = () => navigate(-1);
 
   if (error || !homework) {
     return (
@@ -454,15 +454,15 @@ const formatDate = (dateString: string) => {
             {selectedTask.images.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-medium mb-2 text-slate-600">Teacher's images:</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {selectedTask.images.map((img, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setSelectedImage(img.path || img.url)}
-                      className="aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
+                      onClick={() => setSelectedImage(img.url)}
+                      className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                     >
                       <img 
-                        src={img.path || img.url}
+                        src={img.url}
                         alt=""
                         className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />
@@ -496,24 +496,24 @@ const formatDate = (dateString: string) => {
               </p>
 
               {/* Image Grid */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {/* Uploaded Images */}
                 {selectedAnswer.files.map((file, fileIdx) => (
                   file.type.startsWith('image/') && (
-                    <div key={fileIdx} className="relative aspect-square group">
+                    <div key={fileIdx} className="relative w-16 h-16 group">
                       <img 
                         src={getImagePreview(file, fileIdx)}
                         alt="" 
-                        className="w-full h-full object-cover rounded-xl"
+                        className="w-16 h-16 object-cover rounded-lg"
                         onClick={() => setSelectedImage(getImagePreview(file, fileIdx))}
                       />
                       <button
                         onClick={() => removeFile(fileIdx)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                       >
-                        <span className="material-symbols-outlined text-[14px]">close</span>
+                        <span className="material-symbols-outlined text-[12px]">close</span>
                       </button>
-                      <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/50 rounded text-[10px] text-white">
+                      <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-[9px] text-white">
                         {(file.size / 1024).toFixed(0)} KB
                       </div>
                     </div>
@@ -523,10 +523,10 @@ const formatDate = (dateString: string) => {
                 {/* Add Image Buttons */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-2xl text-slate-400">add_photo_alternate</span>
-                  <span className="text-[10px] text-slate-400">Gallery</span>
+                  <span className="material-symbols-outlined text-xl text-slate-400">add_photo_alternate</span>
+                  <span className="text-[9px] text-slate-400">Gallery</span>
                 </button>
                 
                 {/* <button

@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { View } from '../types';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 interface ImageFile {
@@ -57,11 +58,8 @@ interface TaskItem {
   files: File[];
 }
 
-interface TasksViewProps {
-  navigate: (view: View, id?: string) => void;
-}
-
-const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
+const TasksView: React.FC = () => {
+  const navigate = useNavigate();
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -420,7 +418,7 @@ const TasksView: React.FC<TasksViewProps> = ({ navigate }) => {
             return (
               <div 
                 key={homework._id}
-                onClick={() => navigate('TASK_DETAIL', homework._id)}
+                onClick={() => navigate(`/tasks/${homework._id}`)}
                 className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="flex items-start gap-3 mb-3">
