@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { UserRole } from '../types';
 import api from '../api';
 import Logo from '../logo.png'
+import archaIcon from '../archaIcon.png'
 interface LoginViewProps {
   onLogin: (role: UserRole) => void;
 }
@@ -151,14 +152,38 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           >
             <img src={Logo} alt="Everest Logo" className="w-28 h-28 object-contain" />
           </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-3xl md:text-2xl font-extrabold text-center mb-2 text-text-primary-light dark:text-text-primary-dark tracking-tight transition-colors duration-300"
-          >
-            Pluto Homework
-          </motion.h1>
+           <motion.img
+              src={archaIcon}
+              alt="archa"
+              width={30}
+              height={30}
+              initial={{ rotate: 0 }}
+              animate={{ rotate: [0, 8, -8, 6, -6, 0] }}
+              transition={{
+                duration: 0.6,      // qimirlash vaqti (qisqa)
+                repeat: Infinity,
+                repeatDelay: 2,     // har 2 sekundda bir
+                ease: "easeInOut",
+              }}
+              style={{
+                objectFit: "contain",
+                marginLeft: "3px",
+                filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
+                transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
+              }}
+            />
+          <div className='flex items-center justify-center gap-2'>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="text-3xl md:text-2xl font-extrabold text-center mb-2 text-text-primary-light dark:text-text-primary-dark tracking-tight transition-colors duration-300"
+            >
+              Pluto Homework
+            </motion.h1>
+           
+
+          </div>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

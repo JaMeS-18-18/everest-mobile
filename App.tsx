@@ -20,6 +20,7 @@ import StudentHomeView from './views/StudentHomeView';
 import StudentHomeworkDetailView from './views/StudentHomeworkDetailView';
 import BottomNav from './components/BottomNav';
 import 'react-toastify/dist/ReactToastify.css';
+import SnowEffect from './components/SnowEffect';
 
 const App: React.FC = () => {
   // Example: dark mode state (can be expanded as needed)
@@ -87,6 +88,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto relative bg-background-light dark:bg-background-dark overflow-x-hidden">
+			<SnowEffect/>
+      
       <div className="flex-1">
         <Routes>
           <Route path="/login" element={<LoginPageWithClearStorage onLogin={handleLogin} />} />

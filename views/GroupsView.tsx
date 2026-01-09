@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Loader from '@/components/Loader';
+import { motion } from 'framer-motion';
+import archaIcon from '../archaIcon.png'
 
 interface Student {
   _id: string;
@@ -29,7 +31,7 @@ const GroupsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
   const getProfileImageUrl = (url?: string) => {
@@ -47,7 +49,7 @@ const GroupsView: React.FC = () => {
       }
     });
   }, []);
- 
+
 
   useEffect(() => {
     fetchGroups();
@@ -57,7 +59,7 @@ const GroupsView: React.FC = () => {
     try {
       const response = await api.get('/groups');
       const data = response.data;
-      
+
       if (data.success) {
         setGroups(data.data);
       } else {
@@ -85,7 +87,7 @@ const GroupsView: React.FC = () => {
 
   const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const filteredGroups = groups.filter(group => 
+  const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -98,7 +100,7 @@ const GroupsView: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error}</p>
-        <button 
+        <button
           onClick={fetchGroups}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
@@ -108,7 +110,7 @@ const GroupsView: React.FC = () => {
     );
   }
 
-    const getGreeting = () => {
+  const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
@@ -136,10 +138,32 @@ const GroupsView: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
-              <span className="text-lg font-bold">{user.fullName || 'Teacher'}</span>
+              <div className='flex'>
+                <span className="text-lg font-bold">{user.fullName || 'Teacher'}</span>
+                <motion.img
+              src={archaIcon}
+              alt="archa"
+              width={20}
+              height={20}
+              initial={{ rotate: 0 }}
+              animate={{ rotate: [0, 8, -8, 6, -6, 0] }}
+              transition={{
+                duration: 0.6,      // qimirlash vaqti (qisqa)
+                repeat: Infinity,
+                repeatDelay: 2,     // har 2 sekundda bir
+                ease: "easeInOut",
+              }}
+              style={{
+                objectFit: "contain",
+                marginLeft: "3px",
+                filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
+                transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
+              }}
+            />
+              </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => navigate('/settings')}
             className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
           >
@@ -152,9 +176,9 @@ const GroupsView: React.FC = () => {
       <div className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pt-0">
         <div className="flex items-center bg-white dark:bg-slate-800 h-12 rounded-xl shadow-sm px-4 border border-transparent focus-within:border-primary/50 transition-all">
           <span className="material-symbols-outlined text-text-secondary-light">search</span>
-          <input 
-            type="text" 
-            placeholder="Search by group name..." 
+          <input
+            type="text"
+            placeholder="Search by group name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent border-none focus:ring-0 text-base"
@@ -170,8 +194,8 @@ const GroupsView: React.FC = () => {
           </div>
         ) : (
           filteredGroups.map((group) => (
-            <div 
-              key={group._id} 
+            <div
+              key={group._id}
               onClick={() => navigate(`/groups/${group._id}`)}
               className="group relative flex items-stretch justify-between gap-4 rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
             >
@@ -189,9 +213,8 @@ const GroupsView: React.FC = () => {
                     {allDays.map(day => {
                       const isActive = group.daysOfWeek.some(d => getDayAbbr(d) === day);
                       return (
-                        <span key={day} className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-bold ${
-                          isActive ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                        }`}>
+                        <span key={day} className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-bold ${isActive ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                          }`}>
                           {day.slice(0, 2)}
                         </span>
                       );
@@ -202,8 +225,8 @@ const GroupsView: React.FC = () => {
               <div className="flex flex-col items-end justify-between">
                 <div className="flex -space-x-2">
                   {group.students.slice(0, 3).map((student, idx) => (
-                    <div 
-                      key={student._id} 
+                    <div
+                      key={student._id}
                       className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-white dark:ring-slate-900 overflow-hidden"
                     >
                       {student.profileImage ? (
@@ -230,7 +253,7 @@ const GroupsView: React.FC = () => {
       </div>
 
       <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-6 pointer-events-none">
-        <button 
+        <button
           onClick={() => navigate('/groups/create')}
           className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
           style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
+import { motion } from 'framer-motion';
+import archaIcon from '../archaIcon.png'
 
 interface ImageFile {
   filename: string;
@@ -87,7 +89,7 @@ const StudentHomeView: React.FC = () => {
       setIsLoading(true);
       const response = await api.get('/homework/');
       const data = response.data;
-      
+
       if (data.success) {
         setHomeworks(data.data);
       } else {
@@ -178,7 +180,7 @@ const StudentHomeView: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error}</p>
-        <button 
+        <button
           onClick={fetchMyHomeworks}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
@@ -210,10 +212,32 @@ const StudentHomeView: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
-              <span className="text-lg font-bold">{user.fullName || 'Student'}</span>
+              <div className='flex'>
+                <span className="text-lg font-bold">{user.fullName || 'Student'}</span>
+                <motion.img
+                  src={archaIcon}
+                  alt="archa"
+                  width={20}
+                  height={20}
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: [0, 8, -8, 6, -6, 0] }}
+                  transition={{
+                    duration: 0.6,      // qimirlash vaqti (qisqa)
+                    repeat: Infinity,
+                    repeatDelay: 2,     // har 2 sekundda bir
+                    ease: "easeInOut",
+                  }}
+                  style={{
+                    objectFit: "contain",
+                    marginLeft: "3px",
+                    filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
+                    transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
+                  }}
+                />
+              </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => navigate('SETTINGS')}
             className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
           >
@@ -257,14 +281,13 @@ const StudentHomeView: React.FC = () => {
             { key: 'graded', label: 'Graded' },
             { key: 'overdue', label: 'Overdue' },
           ].map((filter) => (
-            <button 
+            <button
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
-              className={`h-9 px-5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
-                activeFilter === filter.key 
-                  ? 'bg-primary text-white' 
+              className={`h-9 px-5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${activeFilter === filter.key
+                  ? 'bg-primary text-white'
                   : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-              }`}
+                }`}
             >
               {filter.label}
             </button>
@@ -287,24 +310,22 @@ const StudentHomeView: React.FC = () => {
               const hwStatus = getHomeworkStatus(homework);
               const isGraded = hwStatus === 'graded';
               const statusVal = homework.submission?.status;
-              
+
               return (
-                <div 
+                <div
                   key={homework._id}
                   onClick={() => navigate(`/student/homework/${homework._id}`)}
-                  className={`bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border cursor-pointer active:scale-[0.99] transition-all ${
-                    isGraded
+                  className={`bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border cursor-pointer active:scale-[0.99] transition-all ${isGraded
                       ? 'border-slate-200 dark:border-slate-700'
                       : hwStatus === 'submitted'
                         ? 'border-blue-200 dark:border-blue-800'
-                        : overdue 
-                          ? 'border-red-200 dark:border-red-800' 
+                        : overdue
+                          ? 'border-red-200 dark:border-red-800'
                           : 'border-slate-100 dark:border-slate-800'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                      isGraded
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isGraded
                         ? statusVal === 'Worse'
                           ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                           : statusVal === 'Bad'
@@ -318,25 +339,24 @@ const StudentHomeView: React.FC = () => {
                                   : 'bg-slate-100 text-slate-600'
                         : hwStatus === 'submitted'
                           ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                          : overdue 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600' 
+                          : overdue
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                             : 'bg-primary/10 text-primary'
-                    }`}>
+                      }`}>
                       <span className="material-symbols-outlined">
                         {isGraded ? (
                           statusVal === 'Worse' ? 'sentiment_very_dissatisfied' :
-                          statusVal === 'Bad' ? 'sentiment_dissatisfied' :
-                          statusVal === 'Good' ? 'sentiment_satisfied' :
-                          statusVal === 'Better' ? 'sentiment_very_satisfied' :
-                          statusVal === 'Perfect' ? 'star' :
-                          getCategoryIcon(homework.category)
+                            statusVal === 'Bad' ? 'sentiment_dissatisfied' :
+                              statusVal === 'Good' ? 'sentiment_satisfied' :
+                                statusVal === 'Better' ? 'sentiment_very_satisfied' :
+                                  statusVal === 'Perfect' ? 'star' :
+                                    getCategoryIcon(homework.category)
                         ) : hwStatus === 'submitted' ? 'schedule_send' : getCategoryIcon(homework.category)}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          isGraded
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isGraded
                             ? statusVal === 'Worse'
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                               : statusVal === 'Bad'
@@ -350,10 +370,10 @@ const StudentHomeView: React.FC = () => {
                                       : 'bg-slate-100 text-slate-600'
                             : hwStatus === 'submitted'
                               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                              : overdue 
-                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600' 
+                              : overdue
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                                 : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
-                        }`}>
+                          }`}>
                           {isGraded ? (statusVal || 'Graded') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase">
@@ -382,7 +402,7 @@ const StudentHomeView: React.FC = () => {
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                       <div className="flex flex-wrap gap-2">
                         {homework.assignments.map((assignment) => (
-                          <span 
+                          <span
                             key={assignment._id}
                             className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400"
                           >
