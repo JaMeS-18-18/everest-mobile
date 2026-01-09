@@ -50,7 +50,7 @@ const AdminTeachersView: React.FC = () => {
     (t.subject || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: any) => {
     e.preventDefault();
     setCreating(true);
     setError(null);

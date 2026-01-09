@@ -39,7 +39,7 @@ const App: React.FC = () => {
         if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
         if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
         return UserRole.STUDENT;
-      } catch {}
+      } catch { }
     }
     return null;
   });
@@ -75,36 +75,66 @@ const App: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
+  // If not logged in, only allow /login route
+  const isLoggedIn = !!role;
+  // Helper component to clear localStorage and redirect to /login
+  const LoginRedirectClearStorage: React.FC = () => {
+    useEffect(() => {
+      localStorage.clear();
+    }, []);
+    return <Navigate to="/login" replace />;
+  };
+
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto relative bg-background-light dark:bg-background-dark overflow-x-hidden">
       <div className="flex-1">
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<LoginView onLogin={handleLogin} />} />
-          <Route path="/dashboard" element={<DashboardView />} />
-          <Route path="/admin/teachers" element={<AdminTeachersView />} />
-          <Route path="/groups" element={<GroupsView />} />
-          <Route path="/groups/:groupId" element={<GroupDetailView />} />
-          <Route path="/groups/create" element={<CreateGroupView />} />
-          <Route path="/students" element={<StudentsView />} />
-          <Route path="/students/create" element={<CreateStudentView />} />
-          <Route path="/students/:studentId" element={<StudentProfileView />} />
-          <Route path="/tasks" element={<TasksView />} />
-          <Route path="/tasks/:taskId" element={<TaskDetailView />} />
-          <Route path="/notifications" element={<NotificationsView />} />
-          <Route path="/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
-          <Route path="/grading" element={<GradingView />} />
-          <Route path="/student/home" element={<StudentHomeView />} />
-          <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
-          <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
+          <Route path="/login" element={<LoginPageWithClearStorage onLogin={handleLogin} />} />
+          {!isLoggedIn ? (
+            // Not logged in: any route except /login redirects to /login
+            <Route path="*" element={<LoginRedirectClearStorage />} />
+          ) : (
+            // Logged in: all app routes
+            <>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/dashboard" element={<DashboardView />} />
+              <Route path="/admin/teachers" element={<AdminTeachersView />} />
+              <Route path="/groups" element={<GroupsView />} />
+              <Route path="/groups/:groupId" element={<GroupDetailView />} />
+              <Route path="/groups/create" element={<CreateGroupView />} />
+              <Route path="/students" element={<StudentsView />} />
+              <Route path="/students/create" element={<CreateStudentView />} />
+              <Route path="/students/:studentId" element={<StudentProfileView />} />
+              <Route path="/tasks" element={<TasksView />} />
+              <Route path="/tasks/:taskId" element={<TaskDetailView />} />
+              <Route path="/notifications" element={<NotificationsView />} />
+              <Route path="/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              <Route path="/grading" element={<GradingView />} />
+              <Route path="/student/home" element={<StudentHomeView />} />
+              <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
+              <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
+              {/* Catch-all route for unknown paths */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </>
+          )}
         </Routes>
       </div>
       {/* TODO: Update BottomNav to use location.pathname for active state */}
-      {location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+      {isLoggedIn && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
     </div>
   );
+};
+
+/**
+ * Helper component to clear localStorage and render LoginView.
+ */
+const LoginPageWithClearStorage: React.FC<{ onLogin: (role: UserRole) => void }> = ({ onLogin }) => {
+  useEffect(() => {
+    localStorage.clear();
+  }, []);
+  return <LoginView onLogin={onLogin} />;
 };
 
 export default App;

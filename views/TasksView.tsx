@@ -222,7 +222,8 @@ const TasksView: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('description', description);
-      formData.append('deadline', deadline);
+      // Convert local datetime-local value to UTC ISO string
+      formData.append('deadline', new Date(deadline).toISOString());
       formData.append('category', 'DOCUMENT');
       formData.append('assignmentType', assignmentType);
       
@@ -266,15 +267,16 @@ const TasksView: React.FC = () => {
   };
 
   const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    // Ensure ISO format and UTC
+    let isoString = dateString;
+    // If string does not end with Z, add Z (assume UTC)
+    if (!isoString.endsWith('Z')) {
+      isoString += 'Z';
+    }
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return dateString; // fallback if invalid
+    // Format: YYYY-MM-DD, HH:mm (UTC)
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}, ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}`;
   };
 
   const getStatusConfig = (status: string) => {
