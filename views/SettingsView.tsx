@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 import { UserRole } from '../types';
 import api from '../api';
+import Loader from '@/components/Loader';
 
 interface SettingsViewProps {
   role: UserRole;
@@ -143,11 +144,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-      </div>
-    );
+    return <Loader />;
   }
 
   return (

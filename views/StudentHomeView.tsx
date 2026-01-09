@@ -51,6 +51,7 @@ interface Homework {
 }
 
 import { useNavigate } from 'react-router-dom';
+import Loader from '@/components/Loader';
 
 const StudentHomeView: React.FC = () => {
   const navigate = useNavigate();
@@ -169,11 +170,7 @@ const StudentHomeView: React.FC = () => {
   const gradedCount = homeworks.filter(hw => getHomeworkStatus(hw) === 'graded').length;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-      </div>
-    );
+    return <Loader />;
   }
 
   if (error) {

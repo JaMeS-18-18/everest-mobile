@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { View } from '@/types';
+import Loader from '@/components/Loader';
 
 interface GroupInfo {
   _id: string;
@@ -257,11 +258,7 @@ const StudentProfileView: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-      </div>
-    );
+    return <Loader />;
   }
 
   if (error || !student) {

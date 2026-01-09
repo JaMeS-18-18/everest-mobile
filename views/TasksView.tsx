@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import Loader from '../components/Loader';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -318,11 +319,7 @@ const formatDateTime = (dateString: string) => {
   const reviewedCount = homeworks.filter(hw => hw.status === 'reviewed').length;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-      </div>
-    );
+    return <Loader />;
   }
 
   if (error) {

@@ -40,6 +40,7 @@ interface TaskAnswer {
 }
 
 import { useParams, useNavigate } from 'react-router-dom';
+import Loader from '@/components/Loader';
 
 const SubmitHomeworkView: React.FC = () => {
   const { homeworkId } = useParams();
@@ -242,11 +243,7 @@ const formatDate = (dateString: string) => {
 };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-      </div>
-    );
+    return <Loader />;
   }
 
   const onBack = () => navigate(-1);
