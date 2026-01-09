@@ -57,6 +57,7 @@ interface TaskItem {
   id: string;
   title: string;
   files: File[];
+  images?: ImageFile[];
 }
 
 const TasksView: React.FC = () => {
@@ -65,9 +66,12 @@ const TasksView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed'>('all');
-  
+  const [groupSearch, setGroupSearch] = useState('');
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<TaskItem | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([{ id: 'task-1', title: '', files: [] }]);
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -77,6 +81,10 @@ const TasksView: React.FC = () => {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  // Search state for students in create and edit modals
+  const [studentSearch, setStudentSearch] = useState('');
+  // Separate search state for recreate (edit) modal
+  const [recreateStudentSearch, setRecreateStudentSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
@@ -97,7 +105,7 @@ const TasksView: React.FC = () => {
     try {
       const response = await api.get('/homework');
       const data = response.data;
-      
+
       if (data.success) {
         setHomeworks(data.data);
       } else {
@@ -148,6 +156,60 @@ const TasksView: React.FC = () => {
     setTasks([...tasks, { id: newId, title: '', files: [] }]);
   };
 
+  // Open edit modal for a specific task
+  // Fill modal fields with old task values
+  const openEditModal = (task: TaskItem) => {
+    setRecreateStudentSearch(' ');
+    // Simulate fetching old task data (replace with actual API call if needed)
+    // Example response structure:
+    // {
+    //   description, deadline, link, assignmentType, groupId, studentIds, assignments
+    // }
+    // For demo, use task.id to find homework from homeworks list
+    const oldHomework = homeworks.find(hw => hw._id === task.id);
+    if (oldHomework) {
+      setDescription(oldHomework.description || '');
+      // Format deadline for input type="datetime-local"
+      if (oldHomework.deadline) {
+        const d = new Date(oldHomework.deadline);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setDeadline(formatted);
+      } else {
+        setDeadline('');
+      }
+      setLink(oldHomework.link || '');
+      setAssignmentType(oldHomework.assignmentType);
+      setSelectedGroupId(oldHomework.groupId?._id || '');
+      setSelectedStudentIds(oldHomework.studentIds ? oldHomework.studentIds.map(s => String(s._id)) : []);
+      // Convert assignments to TaskItem format
+      const tasksFromOld = oldHomework.assignments.map((a, idx) => ({
+        id: a._id || `task-${Date.now()}-${idx}`,
+        title: a.name,
+        files: [],
+        images: a.images || []
+      }));
+      setTasks(tasksFromOld.length > 0 ? tasksFromOld : [{ id: 'task-' + Date.now(), title: '', files: [], images: [] }]);
+    } else {
+      setDescription(task.title || '');
+      setDeadline('');
+      setLink('');
+      setAssignmentType('group');
+      setSelectedGroupId('');
+      setSelectedStudentIds([]);
+      setTasks([{ id: task.id, title: task.title, files: [], images: [] }]);
+    }
+    setEditTask(task);
+    setEditModalOpen(true);
+  };
+
+  // Close edit modal
+  const closeEditModal = () => {
+    setEditTask(null);
+    setEditModalOpen(false);
+    setRecreateStudentSearch('');
+  };
+
   const removeTask = (id: string) => {
     if (tasks.length > 1) {
       setTasks(tasks.filter(t => t.id !== id));
@@ -175,6 +237,11 @@ const TasksView: React.FC = () => {
     }
     if (validFiles.length === 0) return;
     setTasks(tasks.map(t => t.id === id ? { ...t, files: [...t.files, ...validFiles] } : t));
+  };
+
+  // Remove old image from a task
+  const removeTaskImage = (taskId: string, imgIndex: number) => {
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, images: t.images?.filter((_, i) => i !== imgIndex) } : t));
   };
 
   const removeTaskFile = (taskId: string, fileIndex: number) => {
@@ -226,7 +293,7 @@ const TasksView: React.FC = () => {
       formData.append('deadline', deadline);
       formData.append('category', 'DOCUMENT');
       formData.append('assignmentType', assignmentType);
-      
+
       if (link) {
         formData.append('link', link);
       }
@@ -266,7 +333,7 @@ const TasksView: React.FC = () => {
     }
   };
 
-const formatDateTime = (dateString: string) => {
+  const formatDateTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -278,6 +345,8 @@ const formatDateTime = (dateString: string) => {
       hour12: false
     });
   };
+
+
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -307,16 +376,27 @@ const formatDateTime = (dateString: string) => {
     }
   };
 
-  // Filter homeworks based on active filter
+
+  // Helper to determine if homework is overdue
+  const isOverdue = (hw: Homework) => {
+    const deadline = new Date(hw.deadline);
+    return (hw.status === 'new' || hw.status === 'pending') && deadline < new Date();
+  };
+
+  // Filter homeworks based on active filter, including overdue
   const filteredHomeworks = homeworks.filter(hw => {
     if (activeFilter === 'all') return true;
-    return hw.status === activeFilter;
+    if (activeFilter === 'overdue') return isOverdue(hw);
+    if ((hw.status === activeFilter) && !isOverdue(hw)) return true;
+    return false;
   });
 
-  // Stats counts
-  const newCount = homeworks.filter(hw => hw.status === 'new').length;
-  const pendingCount = homeworks.filter(hw => hw.status === 'pending').length;
+
+  // Stats counts (exclude overdue from new/pending)
+  const newCount = homeworks.filter(hw => hw.status === 'new' && !isOverdue(hw)).length;
+  const pendingCount = homeworks.filter(hw => hw.status === 'pending' && !isOverdue(hw)).length;
   const reviewedCount = homeworks.filter(hw => hw.status === 'reviewed').length;
+  const overdueCount = homeworks.filter(isOverdue).length;
 
   if (isLoading) {
     return <Loader />;
@@ -327,7 +407,7 @@ const formatDateTime = (dateString: string) => {
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-red-500 mb-2">error</span>
         <p className="text-red-500 text-center">{error}</p>
-        <button 
+        <button
           onClick={fetchHomeworks}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
@@ -385,20 +465,30 @@ const formatDateTime = (dateString: string) => {
             { key: 'new', label: 'New', count: newCount },
             { key: 'pending', label: 'Pending', count: pendingCount },
             { key: 'reviewed', label: 'Reviewed', count: reviewedCount },
-          ].map((filter) => (
-            <button 
-              key={filter.key}
-              onClick={() => setActiveFilter(filter.key as typeof activeFilter)}
-              className={`h-9 px-4 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
-                activeFilter === filter.key 
-                  ? 'bg-primary text-white' 
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              {filter.label}
-              <span className={`text-xs ${activeFilter === filter.key ? 'text-white/80' : 'text-slate-400'}`}>({filter.count})</span>
-            </button>
-          ))}
+            { key: 'overdue', label: 'Overdue', count: overdueCount },
+          ].map((filter) => {
+            const isOverdueTab = filter.key === 'overdue';
+            return (
+              <button
+                key={filter.key}
+                onClick={() => setActiveFilter(filter.key as typeof activeFilter)}
+                className={`h-9 px-4 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-1
+                  ${isOverdueTab
+                    ? activeFilter === filter.key
+                      ? 'bg-red-600 text-white'
+                      : 'bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:border-red-600'
+                    : activeFilter === filter.key
+                      ? 'bg-primary text-white'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'}
+                `}
+              >
+                {filter.label}
+                <span className={`text-xs ${isOverdueTab
+                  ? activeFilter === filter.key ? 'text-white/80' : 'text-red-400'
+                  : activeFilter === filter.key ? 'text-white/80' : 'text-slate-400'}`}>{filter.count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -410,14 +500,18 @@ const formatDateTime = (dateString: string) => {
           </div>
         ) : (
           filteredHomeworks.map((homework) => {
-            const statusConfig = getStatusConfig(homework.status);
+            // Overdue logic for display
+            const overdue = isOverdue(homework);
+            const statusConfig = overdue
+              ? { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600', label: 'Overdue' }
+              : getStatusConfig(homework.status);
             const totalImages = homework.assignments.reduce((acc, a) => acc + a.images.length, 0);
 
             return (
-              <div 
+              <div
                 key={homework._id}
+                className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer relative"
                 onClick={() => navigate(`/tasks/${homework._id}`)}
-                className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div className={`w-12 h-12 rounded-xl ${statusConfig.bg} ${statusConfig.text} flex items-center justify-center shrink-0`}>
@@ -448,6 +542,17 @@ const formatDateTime = (dateString: string) => {
                     </div>
                   </div>
                 </div>
+                {/* Edit button */}
+                <button
+                  className="absolute top-4 right-4 px-3 py-1 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/80"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStudentSearch('');
+                    openEditModal({ id: homework._id, title: homework.description, files: [] });
+                  }}
+                >
+                  recreate
+                </button>
 
                 {/* <div className="flex flex-wrap gap-2 mb-3">
                   {homework.assignments.map((assignment) => (
@@ -499,7 +604,10 @@ const formatDateTime = (dateString: string) => {
       {/* FAB Button */}
       <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto pointer-events-none z-40">
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setStudentSearch('');
+            setIsModalOpen(true);
+          }}
           className="absolute bottom-0 right-4 w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-xl hover:bg-primary/90 transition-all hover:scale-105 pointer-events-auto"
         >
           <span className="material-symbols-outlined text-3xl">add</span>
@@ -509,22 +617,28 @@ const formatDateTime = (dateString: string) => {
       {/* Create Homework Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center">
-          <div 
+          <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setIsModalOpen(false)}
+            onClick={() => {
+              setIsModalOpen(false);
+              setStudentSearch('');
+            }}
           />
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-              <button 
-                onClick={() => setIsModalOpen(false)}
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setStudentSearch('');
+                }}
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
               <h2 className="text-lg font-bold">Add Homework</h2>
-              <button 
-                onClick={() => {}}
+              <button
+                onClick={() => { }}
                 className="text-primary font-semibold text-sm"
               >
                 {/* Save Draft */}
@@ -537,7 +651,7 @@ const formatDateTime = (dateString: string) => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-bold">Tasks ({tasks.length})</h3>
-                  <button 
+                  <button
                     onClick={addTask}
                     className="flex items-center gap-1 text-primary font-semibold text-sm px-3 py-1.5 rounded-lg border border-primary hover:bg-primary/5"
                   >
@@ -548,14 +662,14 @@ const formatDateTime = (dateString: string) => {
 
                 <div className="space-y-3">
                   {tasks.map((task, index) => (
-                    <div 
+                    <div
                       key={task.id}
                       className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
                         {tasks.length > 1 && (
-                          <button 
+                          <button
                             onClick={() => removeTask(task.id)}
                             className="text-slate-400 hover:text-red-500"
                           >
@@ -668,7 +782,7 @@ const formatDateTime = (dateString: string) => {
               {/* Recipients */}
               <div>
                 <h3 className="text-lg font-bold mb-3">Recipients</h3>
-                
+
                 <div className="flex gap-4 mb-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -720,33 +834,43 @@ const formatDateTime = (dateString: string) => {
                         </button>
                       )}
                     </div>
+                    {/* Search input for students */}
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                    />
                     <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
                       {students.length === 0 ? (
                         <div className="p-4 text-center text-slate-500 text-sm">
                           No students found
                         </div>
                       ) : (
-                        students.map(student => (
-                          <label 
-                            key={student._id} 
-                            className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedStudentIds.includes(String(student._id))}
-                              onChange={(e) => {
-                                const studentId = String(student._id);
-                                if (e.target.checked) {
-                                  setSelectedStudentIds([...selectedStudentIds, studentId]);
-                                } else {
-                                  setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
-                                }
-                              }}
-                              className="w-5 h-5 text-primary rounded border-slate-300"
-                            />
-                            <span className="font-medium">{student.fullName}</span>
-                          </label>
-                        ))
+                        students
+                          .filter(student => student.fullName.toLowerCase().includes(studentSearch.toLowerCase()))
+                          .map(student => (
+                            <label
+                              key={student._id}
+                              className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedStudentIds.includes(String(student._id))}
+                                onChange={(e) => {
+                                  const studentId = String(student._id);
+                                  if (e.target.checked) {
+                                    setSelectedStudentIds([...selectedStudentIds, studentId]);
+                                  } else {
+                                    setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
+                                  }
+                                }}
+                                className="w-5 h-5 text-primary rounded border-slate-300"
+                              />
+                              <span className="font-medium">{student.fullName}</span>
+                            </label>
+                          ))
                       )}
                     </div>
                   </div>
@@ -771,6 +895,403 @@ const formatDateTime = (dateString: string) => {
                 className="flex-1 py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : `Create ${tasks.filter(t => t.title.trim()).length} Assignment`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Task Modal */}
+      {editModalOpen && editTask && (
+        <div className="fixed inset-0 z-[61] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { closeEditModal(); setRecreateStudentSearch(''); }} />
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <button onClick={closeEditModal} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <h2 className="text-lg font-bold">Recreate Homework</h2>
+              <div className="w-10"></div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* Tasks Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold">Tasks</h3>
+                  <button onClick={addTask} className="flex items-center gap-1 text-primary font-semibold text-sm px-3 py-1.5 rounded-lg border border-primary hover:bg-primary/5">
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Add Task
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {tasks.map((task, index) => (
+                    <div key={task.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                      {/* Recipients (edit modal) */}
+                      <div>
+                        <h3 className="text-lg font-bold mb-3">Recipients</h3>
+                        <div className="flex gap-4 mb-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="editAssignmentType"
+                              checked={assignmentType === 'group'}
+                              onChange={() => setAssignmentType('group')}
+                              className="w-5 h-5 text-primary"
+                            />
+                            <span className="font-medium">Entire Group</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="editAssignmentType"
+                              checked={assignmentType === 'individual'}
+                              onChange={() => setAssignmentType('individual')}
+                              className="w-5 h-5 text-primary"
+                            />
+                            <span className="font-medium">Individual Students</span>
+                          </label>
+                        </div>
+                        {assignmentType === 'group' && (
+                          <select
+                            value={selectedGroupId}
+                            onChange={e => setSelectedGroupId(e.target.value)}
+                            className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                          >
+                            <option value="">Select Group</option>
+                            {groups.map(group => (
+                              <option key={group._id} value={group._id}>{group.name}</option>
+                            ))}
+                          </select>
+                        )}
+                        {assignmentType === 'individual' && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-500">
+                                {selectedStudentIds.length} student{selectedStudentIds.length !== 1 ? 's' : ''} selected
+                              </span>
+                              {selectedStudentIds.length > 0 && (
+                                <button
+                                  onClick={() => setSelectedStudentIds([])}
+                                  className="text-xs text-red-500 hover:text-red-600"
+                                >
+                                  Clear all
+                                </button>
+                              )}
+                            </div>
+                            {/* Search input for students in edit modal */}
+                            <input
+                              type="text"
+                              placeholder="Search students..."
+                              className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                              value={recreateStudentSearch}
+                              onChange={e => setRecreateStudentSearch(e.target.value)}
+                            />
+                            <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                              {students.length === 0 ? (
+                                <div className="p-4 text-center text-slate-500 text-sm">
+                                  No students found
+                                </div>
+                              ) : (
+                                students
+                                  .filter(student => student.fullName.toLowerCase().includes(recreateStudentSearch.toLowerCase()))
+                                  .map(student => (
+                                    <label
+                                      key={student._id}
+                                      className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedStudentIds.includes(String(student._id))}
+                                        onChange={(e) => {
+                                          const studentId = String(student._id);
+                                          if (e.target.checked) {
+                                            setSelectedStudentIds([...selectedStudentIds, studentId]);
+                                          } else {
+                                            setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
+                                          }
+                                        }}
+                                        className="w-5 h-5 text-primary rounded border-slate-300"
+                                      />
+                                      <span className="font-medium">{student.fullName}</span>
+                                    </label>
+                                  ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Existing images preview */}
+                      {task.images && task.images.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-xs text-slate-500 mb-1 block">Existing images:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {task.images.map((img, imgIndex) => (
+                              <div key={imgIndex} className="relative">
+                                <img
+                                  src={img.url}
+                                  alt=""
+                                  className="w-14 h-14 rounded-lg object-cover"
+                                />
+                                <button
+                                  onClick={() => removeTaskImage(task.id, imgIndex)}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"
+                                >
+                                  <span className="material-symbols-outlined text-xs">close</span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
+                        {tasks.length > 1 && (
+                          <button onClick={() => removeTask(task.id)} className="text-slate-400 hover:text-red-500">
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Title *"
+                        value={task.title}
+                        onChange={e => updateTaskTitle(task.id, e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent mb-2 focus:outline-none focus:border-primary"
+                      />
+                      <input
+                        type="file"
+                        multiple
+                        ref={el => fileInputRefs.current[task.id] = el}
+                        onChange={e => {
+                          addTaskFiles(task.id, e.target.files);
+                          e.target.value = '';
+                        }}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx"
+                      />
+                      <button
+                        onClick={() => fileInputRefs.current[task.id]?.click()}
+                        className="w-full py-3 border-2 border-dashed border-primary/30 rounded-lg text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
+                      >
+                        <span className="material-symbols-outlined">upload_file</span>
+                        Upload Files
+                      </button>
+                      {/* New files preview */}
+                      {task.files.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <span className="text-xs text-slate-500 mb-1 block">New files:</span>
+                          {task.files.map((file, fileIndex) => (
+                            <div key={fileIndex} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="material-symbols-outlined text-sm text-primary">
+                                  {file.type.startsWith('image/') ? 'image' : 'description'}
+                                </span>
+                                <span className="text-xs truncate">{file.name}</span>
+                              </div>
+                              <button onClick={() => removeTaskFile(task.id, fileIndex)} className="text-red-500 hover:text-red-600 shrink-0">
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Common Settings */}
+              <div>
+                <h3 className="text-lg font-bold mb-1">Common Settings</h3>
+                <p className="text-sm text-slate-500 mb-3">Applied to all tasks above</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description <span className="text-red-500">*</span></label>
+                    <textarea
+                      placeholder="Add detailed instructions..."
+                      value={description}
+                      onChange={e => setDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Deadline <span className="text-red-500">*</span></label>
+                    <input
+                      type="datetime-local"
+                      value={deadline}
+                      onChange={e => setDeadline(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Link <span className="text-slate-400">(Optional)</span></label>
+                    <div className="relative">
+                      <input
+                        type="url"
+                        placeholder="https://"
+                        value={link}
+                        onChange={e => setLink(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      />
+                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">link</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Recipients */}
+              <div>
+                <h3 className="text-lg font-bold mb-3">Recipients</h3>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      checked={assignmentType === 'group'}
+                      onChange={() => setAssignmentType('group')}
+                      className="w-5 h-5 text-primary"
+                    />
+                    <span className="font-medium">Entire Group</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      checked={assignmentType === 'individual'}
+                      onChange={() => setAssignmentType('individual')}
+                      className="w-5 h-5 text-primary"
+                    />
+                    <span className="font-medium">Individual Students</span>
+                  </label>
+                </div>
+                {assignmentType === 'group' && (
+                  <select
+                    value={selectedGroupId}
+                    onChange={e => setSelectedGroupId(e.target.value)}
+                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Group</option>
+                    {groups.map(group => (
+                      <option key={group._id} value={group._id}>{group.name}</option>
+                    ))}
+                  </select>
+                )}
+                {assignmentType === 'individual' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-500">{selectedStudentIds.length} student{selectedStudentIds.length !== 1 ? 's' : ''} selected</span>
+                      {selectedStudentIds.length > 0 && (
+                        <button onClick={() => setSelectedStudentIds([])} className="text-xs text-red-500 hover:text-red-600">Clear all</button>
+                      )}
+                    </div>
+                    {/* Search input */}
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                    />
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                      {students.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500 text-sm">No students found</div>
+                      ) : (
+                        students
+                          .filter(student => student.fullName.toLowerCase().includes(studentSearch.toLowerCase()))
+                          .map(student => (
+                            <label key={student._id} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                              <input
+                                type="checkbox"
+                                checked={selectedStudentIds.includes(String(student._id))}
+                                onChange={e => {
+                                  const studentId = String(student._id);
+                                  if (e.target.checked) {
+                                    setSelectedStudentIds([...selectedStudentIds, studentId]);
+                                  } else {
+                                    setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
+                                  }
+                                }}
+                                className="w-5 h-5 text-primary rounded border-slate-300"
+                              />
+                              <span className="font-medium">{student.fullName}</span>
+                            </label>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+              <button onClick={closeEditModal} className="flex-1 py-3 font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
+              <button
+                onClick={async () => {
+                  // Recreate logic: send POST request with all data
+                  try {
+                    const validTasks = tasks.filter(t => t.title.trim());
+                    if (validTasks.length === 0) {
+                      alert('Please add at least one task with a title');
+                      return;
+                    }
+                    if (!description.trim()) {
+                      alert('Please enter a description');
+                      return;
+                    }
+                    if (!deadline) {
+                      alert('Please select a deadline');
+                      return;
+                    }
+                    if (assignmentType === 'group' && !selectedGroupId) {
+                      alert('Please select a group');
+                      return;
+                    }
+                    if (assignmentType === 'individual' && selectedStudentIds.length === 0) {
+                      alert('Please select at least one student');
+                      return;
+                    }
+                    const formData = new FormData();
+                    formData.append('description', description);
+                    formData.append('deadline', deadline);
+                    formData.append('category', 'DOCUMENT');
+                    formData.append('assignmentType', assignmentType);
+                    if (link) formData.append('link', link);
+                    if (assignmentType === 'group') {
+                      formData.append('groupId', selectedGroupId);
+                    } else {
+                      selectedStudentIds.forEach(id => {
+                        formData.append('studentIds[]', String(id));
+                      });
+                    }
+                    validTasks.forEach((task, index) => {
+                      formData.append(`assignments[${index}][name]`, task.title);
+                      // Add new files
+                      task.files.forEach((file) => {
+                        formData.append(`assignments[${index}][files]`, file);
+                      });
+                      // Add remaining old images (as URLs)
+                      if (task.images && task.images.length > 0) {
+                        task.images.forEach((img, imgIndex) => {
+                          formData.append(`assignments[${index}][existingImages][${imgIndex}]`, img.url);
+                        });
+                      }
+                    });
+                    const response = await api.post('/homework', formData, {
+                      headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    if (response.data.success) {
+                      closeEditModal();
+                      fetchHomeworks();
+                    } else {
+                      throw new Error(response.data.message || 'Failed to recreate homework');
+                    }
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : 'Failed to recreate homework');
+                  }
+                }}
+                className="flex-1 py-3 bg-primary text-white font-semibold rounded-xl"
+              >
+                Recreate
               </button>
             </div>
           </div>

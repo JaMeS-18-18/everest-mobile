@@ -1,11 +1,12 @@
 import React from 'react';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 interface LoaderProps {
   text?: string;
   version?: string;
 }
 
-const Loader: React.FC<LoaderProps> = ({ text = "Loading...", version = 'EVEREST APP V1.0.2' }) => {
+const Loader: React.FC<LoaderProps> = ({ text = "Loading...", version = APP_VERSION }) => {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-[#f7f9fb] relative">
       <div className="flex flex-col items-center gap-8 w-full">
