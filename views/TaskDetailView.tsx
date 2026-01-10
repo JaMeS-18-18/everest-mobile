@@ -1195,45 +1195,100 @@ const TaskDetailView: React.FC = () => {
               {/* Status Selection */}
               <div className="grid grid-cols-5 gap-2">
                 {['Worse', 'Bad', 'Good', 'Better', 'Perfect'].map((status) => {
+                  // Dark mode and status-based color classes
                   let color = '';
                   let border = '';
+                  let iconColor = '';
+                  let textColor = '';
                   switch (status) {
                     case 'Worse':
-                      color = reviewStatus === status ? 'bg-red-50' : 'bg-red-25';
-                      border = reviewStatus === status ? 'border-red-500' : 'border-red-200';
+                      color = reviewStatus === status
+                        ? 'bg-red-50 dark:bg-red-900/40'
+                        : 'bg-red-25 dark:bg-red-900/20';
+                      border = reviewStatus === status
+                        ? 'border-red-500 dark:border-red-400'
+                        : 'border-red-200 dark:border-red-700';
+                      iconColor = reviewStatus === status
+                        ? 'text-red-500 dark:text-red-300'
+                        : 'text-red-400 dark:text-red-500';
+                      textColor = reviewStatus === status
+                        ? 'text-red-700 dark:text-red-200'
+                        : 'text-red-500 dark:text-red-400';
                       break;
                     case 'Bad':
-                      color = reviewStatus === status ? 'bg-orange-50' : 'bg-orange-25';
-                      border = reviewStatus === status ? 'border-orange-400' : 'border-orange-200';
+                      color = reviewStatus === status
+                        ? 'bg-orange-50 dark:bg-orange-900/40'
+                        : 'bg-orange-25 dark:bg-orange-900/20';
+                      border = reviewStatus === status
+                        ? 'border-orange-400 dark:border-orange-400'
+                        : 'border-orange-200 dark:border-orange-700';
+                      iconColor = reviewStatus === status
+                        ? 'text-orange-500 dark:text-orange-300'
+                        : 'text-orange-400 dark:text-orange-500';
+                      textColor = reviewStatus === status
+                        ? 'text-orange-700 dark:text-orange-200'
+                        : 'text-orange-500 dark:text-orange-400';
                       break;
                     case 'Good':
-                      color = reviewStatus === status ? 'bg-blue-50' : 'bg-blue-25';
-                      border = reviewStatus === status ? 'border-blue-500' : 'border-blue-200';
+                      color = reviewStatus === status
+                        ? 'bg-blue-50 dark:bg-blue-900/40'
+                        : 'bg-blue-25 dark:bg-blue-900/20';
+                      border = reviewStatus === status
+                        ? 'border-blue-500 dark:border-blue-400'
+                        : 'border-blue-200 dark:border-blue-700';
+                      iconColor = reviewStatus === status
+                        ? 'text-blue-500 dark:text-blue-300'
+                        : 'text-blue-400 dark:text-blue-500';
+                      textColor = reviewStatus === status
+                        ? 'text-blue-700 dark:text-blue-200'
+                        : 'text-blue-500 dark:text-blue-400';
                       break;
                     case 'Better':
-                      color = reviewStatus === status ? 'bg-green-50' : 'bg-green-25';
-                      border = reviewStatus === status ? 'border-green-500' : 'border-green-200';
+                      color = reviewStatus === status
+                        ? 'bg-green-50 dark:bg-green-900/40'
+                        : 'bg-green-25 dark:bg-green-900/20';
+                      border = reviewStatus === status
+                        ? 'border-green-500 dark:border-green-400'
+                        : 'border-green-200 dark:border-green-700';
+                      iconColor = reviewStatus === status
+                        ? 'text-green-500 dark:text-green-300'
+                        : 'text-green-400 dark:text-green-500';
+                      textColor = reviewStatus === status
+                        ? 'text-green-700 dark:text-green-200'
+                        : 'text-green-500 dark:text-green-400';
                       break;
                     case 'Perfect':
-                      color = reviewStatus === status ? 'bg-yellow-50' : 'bg-yellow-25';
-                      border = reviewStatus === status ? 'border-yellow-400' : 'border-yellow-200';
+                      color = reviewStatus === status
+                        ? 'bg-yellow-50 dark:bg-yellow-300/40'
+                        : 'bg-yellow-25 dark:bg-yellow-900/20';
+                      border = reviewStatus === status
+                        ? 'border-yellow-400 dark:border-yellow-300'
+                        : 'border-yellow-200 dark:border-yellow-700';
+                      iconColor = reviewStatus === status
+                        ? 'text-yellow-500 dark:text-yellow-300'
+                        : 'text-yellow-400 dark:text-yellow-500';
+                      textColor = reviewStatus === status
+                        ? 'text-yellow-800 dark:text-yellow-900'
+                        : 'text-yellow-600 dark:text-yellow-400';
                       break;
                   }
+                  // Add opacity-60 to unselected, full opacity to selected
+                  const faded = reviewStatus !== status ? 'opacity-60' : 'opacity-100';
                   return (
                     <button
                       key={status}
                       onClick={() => selectedStudent.submitted && setReviewStatus(status as any)}
-                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${color} ${border} ${!selectedStudent.submitted ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${color} ${border} ${faded} ${!selectedStudent.submitted ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!selectedStudent.submitted}
                     >
-                      <span className={`material-symbols-outlined text-2xl text-slate-500`}>
+                      <span className={`material-symbols-outlined text-2xl ${iconColor}`}>
                         {status === 'Worse' && 'sentiment_very_dissatisfied'}
                         {status === 'Bad' && 'sentiment_dissatisfied'}
                         {status === 'Good' && 'sentiment_satisfied'}
                         {status === 'Better' && 'sentiment_very_satisfied'}
                         {status === 'Perfect' && 'star'}
                       </span>
-                      <span className={`text-xs font-medium text-slate-700`}>
+                      <span className={`text-xs font-medium ${textColor}`}>
                         {status}
                       </span>
                     </button>

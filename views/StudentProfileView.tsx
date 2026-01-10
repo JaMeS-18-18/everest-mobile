@@ -5,6 +5,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { View } from '@/types';
 import Loader from '@/components/Loader';
+import StudentProgressCircle from '@/components/StudentProgressCircle';
+import { calculateStudentPotential, Status as TaskStatus } from '../utils/calculateStudentPotential';
 
 interface GroupInfo {
   _id: string;
@@ -80,6 +82,9 @@ const StudentProfileView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'graded'>('all');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Date range state for progress
+  // Only custom date range for progress
+  const [customRange, setCustomRange] = useState<{ from: string, to: string }>({ from: '', to: '' });
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', username: '', password: '', groupId: '' });
   const [groups, setGroups] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -379,7 +384,7 @@ const StudentProfileView: React.FC = () => {
 
       {/* Profile Info */}
       <div className="flex flex-col items-center py-6 px-4">
-        <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary mb-4 overflow-hidden">
+        {/* <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary mb-4 overflow-hidden">
           {student.profileImage ? (
             <img
               src={getProfileImageUrl(student.profileImage) || student.profileImage || 'https://picsum.photos/seed/student/200/200'}
@@ -389,10 +394,73 @@ const StudentProfileView: React.FC = () => {
           ) : (
             student.fullName.charAt(0).toUpperCase()
           )}
-        </div>
+        </div> */}
         <h1 className="text-2xl font-bold capitalize">{student.fullName}</h1>
         <p className="text-sm text-slate-500 font-medium mt-1">{student.phone}</p>
-
+        {/* Progress date range filter: only start/end date */}
+        <div className="flex gap-2 justify-center items-center mb-4 mt-2">
+          <div className="relative">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-primary text-lg material-symbols-outlined pointer-events-none">calendar_month</span>
+            <input
+              type="date"
+              value={customRange.from}
+              onChange={e => setCustomRange(r => ({ ...r, from: e.target.value }))}
+              className="pl-9 pr-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm min-w-[120px]"
+            />
+          </div>
+          <span className="mx-1 text-slate-400 font-bold text-lg">-</span>
+          <div className="relative">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-primary text-lg material-symbols-outlined pointer-events-none">calendar_month</span>
+            <input
+              type="date"
+              value={customRange.to}
+              onChange={e => setCustomRange(r => ({ ...r, to: e.target.value }))}
+              className="pl-9 pr-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm min-w-[120px]"
+            />
+          </div>
+        </div>
+        {/* Calculate student potential from homeworks (filtered by start/end date) */}
+        {(() => {
+          let filteredHomeworks = homeworks;
+          if (customRange.from && customRange.to) {
+            const from = new Date(customRange.from);
+            const to = new Date(customRange.to);
+            filteredHomeworks = homeworks.filter(hw => {
+              if (!hw.createdAt) return false;
+              const d = new Date(hw.createdAt);
+              return d >= from && d <= to;
+            });
+          }
+          const tasks = filteredHomeworks.map(hw => {
+            if (!hw.submission) {
+              const isOverdue = hw.deadline ? (new Date(hw.deadline) < new Date()) : false;
+              return {
+                status: 'Worse' as TaskStatus,
+                isOverdue
+              };
+            }
+            const status = (['Worse', 'Bad', 'Good', 'Better', 'Perfect'].includes(hw.submission.status)
+              ? hw.submission.status as TaskStatus
+              : 'Worse');
+            let isOverdue = false;
+            if (hw.deadline) {
+              const deadlineDate = new Date(hw.deadline);
+              const submittedAt = hw.submission.submittedAt ? new Date(hw.submission.submittedAt) : null;
+              if (submittedAt) {
+                isOverdue = submittedAt > deadlineDate;
+              } else {
+                isOverdue = deadlineDate < new Date();
+              }
+            }
+            return {
+              status,
+              isOverdue
+            };
+          });
+          const result = calculateStudentPotential(tasks);
+          const { percent, label, delta, status } = result;
+          return <StudentProgressCircle percent={percent} label={label} delta={delta} status={status} />;
+        })()}
         {student.groupId && (
           <div className="mt-4 bg-card-light dark:bg-card-dark rounded-xl p-4 w-full border border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
@@ -413,6 +481,8 @@ const StudentProfileView: React.FC = () => {
           </div>
         )}
       </div>
+
+
 
       {/* Stats */}
       <div className="flex px-4 gap-3 mb-6">
@@ -713,26 +783,38 @@ const StudentProfileView: React.FC = () => {
                     {['Worse', 'Bad', 'Good', 'Better', 'Perfect'].map((status) => {
                       let color = '';
                       let border = '';
+                      let iconColor = '';
+                      let textColor = '';
                       switch (status) {
                         case 'Worse':
-                          color = reviewStatus === status ? 'bg-red-50' : 'bg-red-25';
-                          border = reviewStatus === status ? 'border-red-500' : 'border-red-200';
+                          color = reviewStatus === status ? 'bg-red-100 dark:bg-red-900/30' : 'bg-red-25 dark:bg-red-900/10';
+                          border = reviewStatus === status ? 'border-red-500 dark:border-red-400' : 'border-red-200 dark:border-red-700';
+                          iconColor = reviewStatus === status ? 'text-red-500 dark:text-red-400' : 'text-slate-500 dark:text-slate-400';
+                          textColor = reviewStatus === status ? 'text-red-700 dark:text-red-300' : 'text-slate-700 dark:text-slate-300';
                           break;
                         case 'Bad':
-                          color = reviewStatus === status ? 'bg-orange-50' : 'bg-orange-25';
-                          border = reviewStatus === status ? 'border-orange-400' : 'border-orange-200';
+                          color = reviewStatus === status ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-orange-25 dark:bg-orange-900/10';
+                          border = reviewStatus === status ? 'border-orange-400 dark:border-orange-300' : 'border-orange-200 dark:border-orange-700';
+                          iconColor = reviewStatus === status ? 'text-orange-500 dark:text-orange-300' : 'text-slate-500 dark:text-slate-400';
+                          textColor = reviewStatus === status ? 'text-orange-700 dark:text-orange-200' : 'text-slate-700 dark:text-slate-300';
                           break;
                         case 'Good':
-                          color = reviewStatus === status ? 'bg-blue-50' : 'bg-blue-25';
-                          border = reviewStatus === status ? 'border-blue-500' : 'border-blue-200';
+                          color = reviewStatus === status ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-blue-25 dark:bg-blue-900/10';
+                          border = reviewStatus === status ? 'border-blue-500 dark:border-blue-400' : 'border-blue-200 dark:border-blue-700';
+                          iconColor = reviewStatus === status ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400';
+                          textColor = reviewStatus === status ? 'text-blue-700 dark:text-blue-200' : 'text-slate-700 dark:text-slate-300';
                           break;
                         case 'Better':
-                          color = reviewStatus === status ? 'bg-green-50' : 'bg-green-25';
-                          border = reviewStatus === status ? 'border-green-500' : 'border-green-200';
+                          color = reviewStatus === status ? 'bg-green-100 dark:bg-green-900/30' : 'bg-green-25 dark:bg-green-900/10';
+                          border = reviewStatus === status ? 'border-green-500 dark:border-green-400' : 'border-green-200 dark:border-green-700';
+                          iconColor = reviewStatus === status ? 'text-green-500 dark:text-green-400' : 'text-slate-500 dark:text-slate-400';
+                          textColor = reviewStatus === status ? 'text-green-700 dark:text-green-200' : 'text-slate-700 dark:text-slate-300';
                           break;
                         case 'Perfect':
-                          color = reviewStatus === status ? 'bg-yellow-50' : 'bg-yellow-25';
-                          border = reviewStatus === status ? 'border-yellow-400' : 'border-yellow-200';
+                          color = reviewStatus === status ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-yellow-25 dark:bg-yellow-900/10';
+                          border = reviewStatus === status ? 'border-yellow-400 dark:border-yellow-300' : 'border-yellow-200 dark:border-yellow-700';
+                          iconColor = reviewStatus === status ? 'text-yellow-500 dark:text-yellow-300' : 'text-slate-500 dark:text-slate-400';
+                          textColor = reviewStatus === status ? 'text-yellow-700 dark:text-yellow-200' : 'text-slate-700 dark:text-slate-300';
                           break;
                       }
                       return (
@@ -741,14 +823,14 @@ const StudentProfileView: React.FC = () => {
                           onClick={() => setReviewStatus(status as any)}
                           className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${color} ${border}`}
                         >
-                          <span className={`material-symbols-outlined text-2xl text-slate-500`}>
+                          <span className={`material-symbols-outlined text-2xl ${iconColor}`}>
                             {status === 'Worse' && 'sentiment_very_dissatisfied'}
                             {status === 'Bad' && 'sentiment_dissatisfied'}
                             {status === 'Good' && 'sentiment_satisfied'}
                             {status === 'Better' && 'sentiment_very_satisfied'}
                             {status === 'Perfect' && 'star'}
                           </span>
-                          <span className={`text-xs font-medium text-slate-700`}>
+                          <span className={`text-xs font-medium ${textColor}`}>
                             {status}
                           </span>
                         </button>
