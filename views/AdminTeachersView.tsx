@@ -83,8 +83,21 @@ const AdminTeachersView: React.FC = () => {
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
               <span className="font-semibold">{teachers.length} Active Teachers</span>
             </span>
-            <span>•</span>
-            <span>All Departments</span>
+            {/* Organization name badge */}
+            {(() => {
+              try {
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                  const user = JSON.parse(userStr);
+                  if (user.organization && user.organization.name) {
+                    return (
+                      <span className="ml-2 px-3 py-1 rounded bg-blue-100 text-blue-700 font-semibold text-xs">{user.organization.name}</span>
+                    );
+                  }
+                }
+              } catch {}
+              return null;
+            })()}
           </div>
         </div>
         <div className="flex items-center gap-2">

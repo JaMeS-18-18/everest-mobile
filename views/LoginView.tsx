@@ -111,6 +111,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       let userRole: UserRole = UserRole.STUDENT;
       if (data.user?.role === 'admin' || data.user?.role === 'Admin') userRole = UserRole.ADMIN;
       else if (data.user?.role === 'teacher' || data.user?.role === 'Teacher') userRole = UserRole.TEACHER;
+      else if (data.user?.role === 'superadmin' || data.user?.role === 'SUPERADMIN' || data.user?.role === 'Superadmin') userRole = UserRole.SUPERADMIN;
       onLogin(userRole);
       setFailCount(0);
       setBlockedUntil(null);

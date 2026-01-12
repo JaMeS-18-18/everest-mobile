@@ -19,8 +19,11 @@ import GradingView from './views/GradingView';
 import StudentHomeView from './views/StudentHomeView';
 import StudentHomeworkDetailView from './views/StudentHomeworkDetailView';
 import BottomNav from './components/BottomNav';
+import SuperadminBottomNav from './components/SuperadminBottomNav';
+import SuperadminAdminsView from './views/SuperadminAdminsView';
 import 'react-toastify/dist/ReactToastify.css';
 import SnowEffect from './components/SnowEffect';
+import SuperadminDashboardView from './views/SuperadminDashboardView';
 
 const App: React.FC = () => {
   // Example: dark mode state (can be expanded as needed)
@@ -37,9 +40,10 @@ const App: React.FC = () => {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
-        if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
-        return UserRole.STUDENT;
+        if (user.role === 'superadmin' || user.role === 'Superadmin') return UserRole.SUPERADMIN;
+        else if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
+        else if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
+        else return UserRole.STUDENT;
       } catch { }
     }
     return null;
@@ -59,7 +63,9 @@ const App: React.FC = () => {
   // Simple login handler for demonstration (expand as needed)
   const handleLogin = (role: UserRole) => {
     setRole(role);
-    if (role === UserRole.TEACHER) {
+    if (role === UserRole.SUPERADMIN) {
+      navigate('/superadmin/dashboard', { replace: true });
+    } else if (role === UserRole.TEACHER) {
       navigate('/groups', { replace: true });
     } else if (role === UserRole.ADMIN) {
       navigate('/admin/teachers', { replace: true });
@@ -101,6 +107,9 @@ const App: React.FC = () => {
             <>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/dashboard" element={<DashboardView />} />
+              <Route path="/superadmin/dashboard" element={<SuperadminDashboardView />} />
+              <Route path="/superadmin/admins" element={<SuperadminAdminsView />} />
+              <Route path="/superadmin/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               <Route path="/admin/teachers" element={<AdminTeachersView />} />
               <Route path="/groups" element={<GroupsView />} />
               <Route path="/groups/:groupId" element={<GroupDetailView />} />
@@ -122,8 +131,11 @@ const App: React.FC = () => {
           )}
         </Routes>
       </div>
-      {/* TODO: Update BottomNav to use location.pathname for active state */}
-      {isLoggedIn && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+      {/* Always show bottom nav except for login, create student/group, and student homework/submit-homework */}
+      {isLoggedIn && role === UserRole.SUPERADMIN && location.pathname.startsWith('/superadmin') && (
+        <SuperadminBottomNav />
+      )}
+      {isLoggedIn && role !== UserRole.SUPERADMIN && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
     </div>

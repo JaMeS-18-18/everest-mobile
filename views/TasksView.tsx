@@ -153,7 +153,11 @@ const TasksView: React.FC = () => {
 
   const addTask = () => {
     const newId = Date.now().toString();
-    setTasks([...tasks, { id: newId, title: '', files: [] }]);
+    setTasks(prev => {
+      const copy = [...prev];
+      copy.unshift({ id: newId, title: '', files: [] });
+      return copy;
+    });
   };
 
   // Open edit modal for a specific task
@@ -306,7 +310,8 @@ const TasksView: React.FC = () => {
         });
       }
 
-      validTasks.forEach((task, index) => {
+      // Reverse tasks so backend order matches frontend visual order
+      [...validTasks].reverse().forEach((task, index) => {
         formData.append(`assignments[${index}][name]`, task.title);
         task.files.forEach((file, fileIndex) => {
           formData.append(`assignments[${index}][files]`, file);
@@ -529,13 +534,24 @@ const TasksView: React.FC = () => {
                       )}
                     </div>
                     <p className="font-semibold truncate">{homework.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                      <span>Deadline: {formatDateTime(homework.deadline)}</span>
+                    <div className="grid text-xs text-slate-500 mt-1">
+                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <span>Deadline: {formatDateTime(homework.deadline)}</span>
                       {homework.submissionStats && (
                         <span className="flex items-center gap-1 font-medium">
                           <span className="material-symbols-outlined text-sm">group</span>
                           <span className={homework.submissionStats.submitted === homework.submissionStats.total ? 'text-green-600' : 'text-orange-600'}>
                             {homework.submissionStats.submitted}/{homework.submissionStats.total}
+                          </span>
+                        </span>
+                      )}
+                      </div>
+                      {/* Show assigned students if assignmentType is individual */}
+                      {homework.assignmentType === 'individual' && Array.isArray(homework.studentIds) && homework.studentIds.length > 0 && (
+                        <span className="flex items-center gap-1 text-blue-500 font-medium">
+                          <span className="material-symbols-outlined text-sm">person</span>
+                          <span>
+                            {homework.studentIds.map((s: any) => s.fullName || s.username || s).join(', ')}
                           </span>
                         </span>
                       )}
@@ -606,6 +622,13 @@ const TasksView: React.FC = () => {
         <button
           onClick={() => {
             setStudentSearch('');
+            setDescription('');
+            setDeadline('');
+            setLink('');
+            setAssignmentType('group');
+            setSelectedGroupId('');
+            setSelectedStudentIds([]);
+            setTasks([{ id: 'task-1', title: '', files: [] }]);
             setIsModalOpen(true);
           }}
           className="absolute bottom-0 right-4 w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-xl hover:bg-primary/90 transition-all hover:scale-105 pointer-events-auto"
@@ -661,13 +684,13 @@ const TasksView: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {tasks.map((task, index) => (
+                  {tasks.reverse().map((task, index) => (
                     <div
                       key={task.id}
                       className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">Task {tasks.length - index}</span>
                         {tasks.length > 1 && (
                           <button
                             onClick={() => removeTask(task.id)}
@@ -926,99 +949,6 @@ const TasksView: React.FC = () => {
                   {tasks.map((task, index) => (
                     <div key={task.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3">
                       {/* Recipients (edit modal) */}
-                      <div>
-                        <h3 className="text-lg font-bold mb-3">Recipients</h3>
-                        <div className="flex gap-4 mb-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="editAssignmentType"
-                              checked={assignmentType === 'group'}
-                              onChange={() => setAssignmentType('group')}
-                              className="w-5 h-5 text-primary"
-                            />
-                            <span className="font-medium">Entire Group</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="editAssignmentType"
-                              checked={assignmentType === 'individual'}
-                              onChange={() => setAssignmentType('individual')}
-                              className="w-5 h-5 text-primary"
-                            />
-                            <span className="font-medium">Individual Students</span>
-                          </label>
-                        </div>
-                        {assignmentType === 'group' && (
-                          <select
-                            value={selectedGroupId}
-                            onChange={e => setSelectedGroupId(e.target.value)}
-                            className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
-                          >
-                            <option value="">Select Group</option>
-                            {groups.map(group => (
-                              <option key={group._id} value={group._id}>{group.name}</option>
-                            ))}
-                          </select>
-                        )}
-                        {assignmentType === 'individual' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-500">
-                                {selectedStudentIds.length} student{selectedStudentIds.length !== 1 ? 's' : ''} selected
-                              </span>
-                              {selectedStudentIds.length > 0 && (
-                                <button
-                                  onClick={() => setSelectedStudentIds([])}
-                                  className="text-xs text-red-500 hover:text-red-600"
-                                >
-                                  Clear all
-                                </button>
-                              )}
-                            </div>
-                            {/* Search input for students in edit modal */}
-                            <input
-                              type="text"
-                              placeholder="Search students..."
-                              className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
-                              value={recreateStudentSearch}
-                              onChange={e => setRecreateStudentSearch(e.target.value)}
-                            />
-                            <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
-                              {students.length === 0 ? (
-                                <div className="p-4 text-center text-slate-500 text-sm">
-                                  No students found
-                                </div>
-                              ) : (
-                                students
-                                  .filter(student => student.fullName.toLowerCase().includes(recreateStudentSearch.toLowerCase()))
-                                  .map(student => (
-                                    <label
-                                      key={student._id}
-                                      className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedStudentIds.includes(String(student._id))}
-                                        onChange={(e) => {
-                                          const studentId = String(student._id);
-                                          if (e.target.checked) {
-                                            setSelectedStudentIds([...selectedStudentIds, studentId]);
-                                          } else {
-                                            setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
-                                          }
-                                        }}
-                                        className="w-5 h-5 text-primary rounded border-slate-300"
-                                      />
-                                      <span className="font-medium">{student.fullName}</span>
-                                    </label>
-                                  ))
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
                       {/* Existing images preview */}
                       {task.images && task.images.length > 0 && (
                         <div className="mt-2">
@@ -1043,7 +973,7 @@ const TasksView: React.FC = () => {
                         </div>
                       )}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">Task {tasks.length - index}</span>
                         {tasks.length > 1 && (
                           <button onClick={() => removeTask(task.id)} className="text-slate-400 hover:text-red-500">
                             <span className="material-symbols-outlined text-xl">delete</span>
@@ -1263,7 +1193,7 @@ const TasksView: React.FC = () => {
                         formData.append('studentIds[]', String(id));
                       });
                     }
-                    validTasks.forEach((task, index) => {
+                    [...validTasks].reverse().forEach((task, index) => {
                       formData.append(`assignments[${index}][name]`, task.title);
                       // Add new files
                       task.files.forEach((file) => {
