@@ -60,8 +60,40 @@ const SubmitHomeworkView: React.FC = () => {
     fetchHomework();
   }, [homeworkId]);
 
+  // Prefill from localStorage if present, else from homework
+  // Helper: dataURL to File
+  function dataURLtoFile(dataurl: string, filename: string) {
+    const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1], bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+    return new File([u8arr], filename, { type: mime });
+  }
+
   useEffect(() => {
     if (homework && homework.assignments.length > 0) {
+      const saved = localStorage.getItem(`homework_answers_${homework._id}`);
+      const savedPreviews = localStorage.getItem(`homework_previews_${homework._id}`);
+      let previewsObj = {};
+      if (savedPreviews) {
+        try {
+          previewsObj = JSON.parse(savedPreviews);
+        } catch {}
+      }
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === homework.assignments.length) {
+            // If previews exist, convert to File[]
+            const answersWithFiles = parsed.map((a: any) => {
+              const previews = previewsObj[a.assignmentId] || [];
+              const files = previews.map((url: string, idx: number) => dataURLtoFile(url, `image_${idx}.png`));
+              return { ...a, files };
+            });
+            setTaskAnswers(answersWithFiles);
+            setPreviewImages(previewsObj);
+            return;
+          }
+        } catch {}
+      }
       setTaskAnswers(
         homework.assignments.map(a => ({
           assignmentId: a._id,
@@ -70,6 +102,7 @@ const SubmitHomeworkView: React.FC = () => {
           completed: false
         }))
       );
+      setPreviewImages({});
     }
   }, [homework]);
 
@@ -129,6 +162,9 @@ const SubmitHomeworkView: React.FC = () => {
       });
 
       if (response.data.success) {
+        // Remove localStorage data after successful submit
+        localStorage.removeItem(`homework_answers_${homeworkId}`);
+        localStorage.removeItem(`homework_previews_${homeworkId}`);
         navigate(-1); // Go back to previous page or use navigate('/some-path') if you want a specific route
       } else {
         throw new Error(response.data.message || 'Failed to submit homework');
@@ -148,12 +184,33 @@ const SubmitHomeworkView: React.FC = () => {
     ));
   };
 
-  const markTaskComplete = (index: number) => {
+  // Helper to convert File to data URL
+  const fileToDataURL = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const markTaskComplete = async (index: number) => {
     const answer = taskAnswers[index];
     if (answer.text.trim() || answer.files.length > 0) {
-      setTaskAnswers(prev => prev.map((a, i) => 
-        i === index ? { ...a, completed: true } : a
-      ));
+      const updated = taskAnswers.map((a, i) => i === index ? { ...a, completed: true } : a);
+      setTaskAnswers(updated);
+      // Save to localStorage (without files)
+      localStorage.setItem(`homework_answers_${homework?._id}`, JSON.stringify(updated.map(({ files, ...rest }) => rest)));
+
+      // Save previews (images) to localStorage
+      const previewsToSave = { ...previewImages };
+      const assignmentId = answer.assignmentId;
+      if (answer.files.length > 0) {
+        // Only update for this assignment
+        previewsToSave[assignmentId] = await Promise.all(answer.files.map(file => fileToDataURL(file)));
+      }
+      localStorage.setItem(`homework_previews_${homework?._id}`, JSON.stringify(previewsToSave));
+
       setSelectedTaskIndex(null);
     } else {
       alert('Please write an answer or upload a file');
@@ -227,7 +284,7 @@ const SubmitHomeworkView: React.FC = () => {
     return previews[index] || URL.createObjectURL(file);
   };
 
-  const getCompletedCount = () => taskAnswers.filter(a => a.completed || a.text.trim() || a.files.length > 0).length;
+  const getCompletedCount = () => taskAnswers.filter(a => a.completed).length;
   const getTotalTasks = () => homework?.assignments.length || 0;
 
 const formatDate = (dateString: string) => {
@@ -495,27 +552,40 @@ const formatDate = (dateString: string) => {
               {/* Image Grid */}
               <div className="flex flex-wrap gap-2 mt-2">
                 {/* Uploaded Images */}
-                {selectedAnswer.files.map((file, fileIdx) => (
-                  file.type.startsWith('image/') && (
-                    <div key={fileIdx} className="relative w-16 h-16 group">
-                      <img 
-                        src={getImagePreview(file, fileIdx)}
-                        alt="" 
-                        className="w-16 h-16 object-cover rounded-lg"
-                        onClick={() => setSelectedImage(getImagePreview(file, fileIdx))}
-                      />
-                      <button
-                        onClick={() => removeFile(fileIdx)}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                      >
-                        <span className="material-symbols-outlined text-[12px]">close</span>
-                      </button>
-                      <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-[9px] text-white">
-                        {(file.size / 1024).toFixed(0)} KB
+                {/* Show previewImages if files are empty (after reload) */}
+                {(selectedAnswer.files.length > 0
+                  ? selectedAnswer.files.map((file, fileIdx) => (
+                      file.type.startsWith('image/') && (
+                        <div key={fileIdx} className="relative w-16 h-16 group">
+                          <img 
+                            src={getImagePreview(file, fileIdx)}
+                            alt="" 
+                            className="w-16 h-16 object-cover rounded-lg"
+                            onClick={() => setSelectedImage(getImagePreview(file, fileIdx))}
+                          />
+                          <button
+                            onClick={() => removeFile(fileIdx)}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">close</span>
+                          </button>
+                          <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-[9px] text-white">
+                            {(file.size / 1024).toFixed(0)} KB
+                          </div>
+                        </div>
+                      )
+                    ))
+                  : (previewImages[selectedAnswer.assignmentId] || []).map((url, fileIdx) => (
+                      <div key={fileIdx} className="relative w-16 h-16 group">
+                        <img 
+                          src={url}
+                          alt=""
+                          className="w-16 h-16 object-cover rounded-lg"
+                          onClick={() => setSelectedImage(url)}
+                        />
                       </div>
-                    </div>
-                  )
-                ))}
+                    ))
+                )}
                 
                 {/* Add Image Buttons */}
                 <button
@@ -605,7 +675,7 @@ const formatDate = (dateString: string) => {
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-gradient-to-t from-background-light dark:from-background-dark to-transparent pt-8">
           <button
             onClick={handleSubmitAll}
-            disabled={isSubmitting || getCompletedCount() === 0}
+            disabled={isSubmitting || getCompletedCount() !== getTotalTasks()}
             className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isSubmitting ? (
