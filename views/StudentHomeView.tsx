@@ -61,6 +61,7 @@ const StudentHomeView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [groupName, setGroupName] = useState<string>('');
 
   const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
@@ -76,6 +77,11 @@ const StudentHomeView: React.FC = () => {
       if (res.data.success && res.data.user) {
         setUser(res.data.user);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        
+        // Get group name from user data
+        if (res.data.user.studentInfo.groupId?.name) {
+          setGroupName(res.data.user.studentInfo.groupId.name);
+        }
       }
     });
   }, []);
@@ -235,13 +241,18 @@ const StudentHomeView: React.FC = () => {
                   }}
                 />
               </div>
+              {groupName && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="material-symbols-outlined text-primary text-xs">groups</span>
+                  <span className="text-xs font-medium text-primary">{groupName}</span>
+                </div>
+              )}
             </div>
           </div>
           <button
-            onClick={() => navigate('SETTINGS')}
             className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
           >
-            <span className="material-symbols-outlined text-slate-500">settings</span>
+            <span className="material-symbols-outlined text-slate-500">notifications</span>
           </button>
         </div>
 
