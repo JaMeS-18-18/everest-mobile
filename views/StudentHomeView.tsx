@@ -322,6 +322,20 @@ const StudentHomeView: React.FC = () => {
               const isGraded = hwStatus === 'graded';
               const statusVal = homework.submission?.status;
 
+              // Calculate points based on status
+              const getPointsForStatus = (status: string) => {
+                const pointsMap: { [key: string]: number } = {
+                  'Worse': 1,
+                  'Bad': 2,
+                  'Good': 3,
+                  'Better': 4,
+                  'Perfect': 5
+                };
+                return pointsMap[status] || 0;
+              };
+
+              const points = isGraded ? getPointsForStatus(statusVal || '') : 0;
+
               return (
                 <div
                   key={homework._id}
@@ -387,6 +401,12 @@ const StudentHomeView: React.FC = () => {
                           }`}>
                           {isGraded ? (statusVal || 'Graded') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
                         </span>
+                        {isGraded && points > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[12px]">star</span>
+                            <span>+{points}</span>
+                          </span>
+                        )}
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase">
                           {homework.category}
                         </span>

@@ -12,6 +12,9 @@ interface Student {
   fullName: string;
   phone: string;
   username: string;
+  points?: number;
+  percent?: number;
+  rank?: number;
 }
 
 interface Group {
@@ -36,6 +39,7 @@ const GroupDetailView: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | 'rank'>('rank');
   const [editForm, setEditForm] = useState({
     name: '',
     startTime: '',
@@ -80,7 +84,56 @@ const GroupDetailView: React.FC = () => {
       const data = response.data;
       
       if (data.success) {
-        setGroup(data.data);
+        // Fetch student rankings for this group
+        const studentsWithRanking = await Promise.all(
+          data.data.students.map(async (student: Student) => {
+            try {
+              // Get student's homework submissions to calculate ranking
+              const studentResponse = await api.get(`/students/${student._id}`);
+              if (studentResponse.data.success) {
+                const studentData = studentResponse.data.data;
+                const homeworks = studentData.homeworks || [];
+                
+                // Calculate points (same logic as ranking endpoint)
+                const statusBall: Record<string, number> = { Worse: 1, Bad: 2, Good: 3, Better: 4, Perfect: 5 };
+                let totalBall = 0;
+                let gradedCount = 0;
+                
+                homeworks.forEach((hw: any) => {
+                  if (hw.submission && ['Worse', 'Bad', 'Good', 'Better', 'Perfect'].includes(hw.submission.status)) {
+                    const ball = statusBall[hw.submission.status] || 0;
+                    totalBall += ball;
+                    gradedCount++;
+                  }
+                });
+                
+                const avg = gradedCount > 0 ? totalBall / gradedCount : 0;
+                const percent = Math.round((avg / 5) * 100);
+                
+                return {
+                  ...student,
+                  points: totalBall,
+                  percent: percent
+                };
+              }
+            } catch (err) {
+              console.error(`Failed to fetch data for student ${student._id}`, err);
+            }
+            return { ...student, points: 0, percent: 0 };
+          })
+        );
+        
+        // Sort by points and assign ranks
+        const sorted = studentsWithRanking.sort((a, b) => {
+          if (b.percent !== a.percent) return b.percent - a.percent;
+          return (b.points || 0) - (a.points || 0);
+        });
+        
+        sorted.forEach((student, index) => {
+          student.rank = index + 1;
+        });
+        
+        setGroup({ ...data.data, students: sorted });
         setEditForm({
           name: data.data.name,
           startTime: data.data.startTime,
@@ -156,6 +209,15 @@ const GroupDetailView: React.FC = () => {
     student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.phone.includes(searchQuery)
   ) || [];
+
+  // Sort students based on selected option
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    if (sortBy === 'rank') {
+      return (a.rank || 999) - (b.rank || 999);
+    } else {
+      return a.fullName.localeCompare(b.fullName);
+    }
+  });
 
   if (isLoading) {
     return <Loader />;
@@ -241,21 +303,42 @@ const GroupDetailView: React.FC = () => {
       {/* Students List + Add Student Button */}
       <div className="flex-1 px-4 pb-24">
         <div className="flex items-center justify-between mb-3 mt-4">
-          <h2 className="text-lg font-semibold">Students ({filteredStudents.length})</h2>
+          <h2 className="text-lg font-semibold">Students ({sortedStudents.length})</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSortBy(sortBy === 'rank' ? 'name' : 'rank')}
+              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {sortBy === 'rank' ? 'leaderboard' : 'sort_by_alpha'}
+              </span>
+              {sortBy === 'rank' ? 'Rank' : 'Name'}
+            </button>
+          </div>
         </div>
-        {filteredStudents.length === 0 ? (
+        {sortedStudents.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">person_off</span>
             <p>No students found</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredStudents.map((student) => (
+            {sortedStudents.map((student) => (
               <div 
                 key={student._id}
                 className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-primary/40 transition-all"
                 onClick={() => navigate(`/students/${student._id}`)}
               >
+                {sortBy === 'rank' && student.rank && (
+                  <div className={`text-xl font-bold w-8 text-center ${
+                    student.rank === 1 ? 'text-yellow-500' :
+                    student.rank === 2 ? 'text-slate-400' :
+                    student.rank === 3 ? 'text-orange-600' :
+                    'text-slate-400'
+                  }`}>
+                    {student.rank}
+                  </div>
+                )}
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
                   {student.fullName.charAt(0).toUpperCase()}
                 </div>
@@ -264,6 +347,13 @@ const GroupDetailView: React.FC = () => {
                   <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
                     {student.phone}
                   </p>
+                  {sortBy === 'rank' && student.points !== undefined && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-medium text-primary">{student.points} points</span>
+                      <span className="text-xs text-slate-500">•</span>
+                      <span className="text-xs font-medium text-slate-500">{student.percent}%</span>
+                    </div>
+                  )}
                 </div>
                 <a 
                   href={`tel:${student.phone}`}

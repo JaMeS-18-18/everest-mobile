@@ -431,32 +431,26 @@ const StudentProfileView: React.FC = () => {
               return d >= from && d <= to;
             });
           }
-          const tasks = filteredHomeworks.map(hw => {
-            if (!hw.submission) {
-              const isOverdue = hw.deadline ? (new Date(hw.deadline) < new Date()) : false;
+          // Only include graded homeworks (same as ranking logic)
+          const tasks = filteredHomeworks
+            .filter(hw => hw.submission && ['Worse', 'Bad', 'Good', 'Better', 'Perfect'].includes(hw.submission.status))
+            .map(hw => {
+              const status = hw.submission.status as TaskStatus;
+              let isOverdue = false;
+              if (hw.deadline) {
+                const deadlineDate = new Date(hw.deadline);
+                const submittedAt = hw.submission.submittedAt ? new Date(hw.submission.submittedAt) : null;
+                if (submittedAt) {
+                  isOverdue = submittedAt > deadlineDate;
+                } else {
+                  isOverdue = deadlineDate < new Date();
+                }
+              }
               return {
-                status: 'Worse' as TaskStatus,
+                status,
                 isOverdue
               };
-            }
-            const status = (['Worse', 'Bad', 'Good', 'Better', 'Perfect'].includes(hw.submission.status)
-              ? hw.submission.status as TaskStatus
-              : 'Worse');
-            let isOverdue = false;
-            if (hw.deadline) {
-              const deadlineDate = new Date(hw.deadline);
-              const submittedAt = hw.submission.submittedAt ? new Date(hw.submission.submittedAt) : null;
-              if (submittedAt) {
-                isOverdue = submittedAt > deadlineDate;
-              } else {
-                isOverdue = deadlineDate < new Date();
-              }
-            }
-            return {
-              status,
-              isOverdue
-            };
-          });
+            });
           const result = calculateStudentPotential(tasks);
           const { percent, label, delta, status } = result;
           return <StudentProgressCircle percent={percent} label={label} delta={delta} status={status} />;

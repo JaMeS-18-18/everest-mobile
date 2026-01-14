@@ -20,7 +20,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
   ];
   const studentTabs = [
     { label: 'Home', icon: 'home', path: '/student/home' },
-    { label: 'Profile', icon: 'person', path: '/settings' },
+    { label: 'Ranking', icon: 'leaderboard', path: '/student/ranking' },
+    { label: 'Settings', icon: 'settings', path: '/settings' },
   ];
   const adminTabs = [
     { label: 'Home', icon: 'groups', path: '/admin/teachers' },
@@ -44,6 +45,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     // For teacher's Tasks tab, active for both /tasks and /tasks/:taskId
     if (role === UserRole.TEACHER && tabPath === '/tasks') {
       return location.pathname === '/tasks' || /^\/tasks\/[\w-]+$/.test(location.pathname);
+    }
+    // For student's ranking tab
+    if (role === UserRole.STUDENT && tabPath === '/student/ranking') {
+      return location.pathname === '/student/ranking';
     }
     return location.pathname === tabPath;
   }
