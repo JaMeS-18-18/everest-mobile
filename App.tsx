@@ -19,6 +19,7 @@ import GradingView from './views/GradingView';
 import StudentHomeView from './views/StudentHomeView';
 import StudentHomeworkDetailView from './views/StudentHomeworkDetailView';
 import StudentRankingView from './views/StudentRankingView';
+import StudentScheduleView from './views/StudentScheduleView';
 import BottomNav from './components/BottomNav';
 import SuperadminBottomNav from './components/SuperadminBottomNav';
 import SuperadminAdminsView from './views/SuperadminAdminsView';
@@ -124,6 +125,7 @@ const App: React.FC = () => {
               <Route path="/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               <Route path="/grading" element={<GradingView />} />
               <Route path="/student/home" element={<StudentHomeView />} />
+              <Route path="/student/schedule" element={<StudentScheduleView />} />
               <Route path="/student/ranking" element={<StudentRankingView />} />
               <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
               <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
