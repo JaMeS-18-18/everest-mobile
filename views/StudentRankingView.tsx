@@ -74,11 +74,10 @@ const StudentRankingView: React.FC = () => {
   };
 
   const getEmojiForRank = (rank: number) => {
-    if (rank === 1) return '🌟';
-    if (rank === 2) return '😎';
-    if (rank === 3) return '🔥';
-    if (rank === 4) return '✨';
-    return '📚';
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return '🎯';
   };
 
   if (isLoading) {
@@ -217,8 +216,6 @@ const StudentRankingView: React.FC = () => {
                     ? 'bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 border-2 border-blue-300 dark:border-blue-600'
                     : student.rank === 3
                     ? 'bg-gradient-to-r from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 border-2 border-orange-300 dark:border-orange-600'
-                    : student.rank === 4
-                    ? 'bg-gradient-to-r from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 border-2 border-purple-300 dark:border-purple-600'
                     : student.isCurrentUser
                     ? 'bg-primary/10 border-2 border-primary'
                     : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'

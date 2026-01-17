@@ -77,7 +77,7 @@ const StudentHomeView: React.FC = () => {
       if (res.data.success && res.data.user) {
         setUser(res.data.user);
         localStorage.setItem('user', JSON.stringify(res.data.user));
-        
+
         // Get group name from user data
         if (res.data.user.studentInfo.groupId?.name) {
           setGroupName(res.data.user.studentInfo.groupId.name);
@@ -296,8 +296,8 @@ const StudentHomeView: React.FC = () => {
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
               className={`h-9 px-5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${activeFilter === filter.key
-                  ? 'bg-primary text-white'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                ? 'bg-primary text-white'
+                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
                 }`}
             >
               {filter.label}
@@ -341,32 +341,32 @@ const StudentHomeView: React.FC = () => {
                   key={homework._id}
                   onClick={() => navigate(`/student/homework/${homework._id}`)}
                   className={`bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border cursor-pointer active:scale-[0.99] transition-all ${isGraded
-                      ? 'border-slate-200 dark:border-slate-700'
-                      : hwStatus === 'submitted'
-                        ? 'border-blue-200 dark:border-blue-800'
-                        : overdue
-                          ? 'border-red-200 dark:border-red-800'
-                          : 'border-slate-100 dark:border-slate-800'
+                    ? 'border-slate-200 dark:border-slate-700'
+                    : hwStatus === 'submitted'
+                      ? 'border-blue-200 dark:border-blue-800'
+                      : overdue
+                        ? 'border-red-200 dark:border-red-800'
+                        : 'border-slate-100 dark:border-slate-800'
                     }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isGraded
-                        ? statusVal === 'Worse'
+                      ? statusVal === 'Worse'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                        : statusVal === 'Bad'
+                          ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+                          : statusVal === 'Good'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                            : statusVal === 'Better'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                              : statusVal === 'Perfect'
+                                ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
+                                : 'bg-slate-100 text-slate-600'
+                      : hwStatus === 'submitted'
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                        : overdue
                           ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                          : statusVal === 'Bad'
-                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
-                            : statusVal === 'Good'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                              : statusVal === 'Better'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
-                                : statusVal === 'Perfect'
-                                  ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
-                                  : 'bg-slate-100 text-slate-600'
-                        : hwStatus === 'submitted'
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                          : overdue
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                            : 'bg-primary/10 text-primary'
+                          : 'bg-primary/10 text-primary'
                       }`}>
                       <span className="material-symbols-outlined">
                         {isGraded ? (
@@ -382,22 +382,22 @@ const StudentHomeView: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isGraded
-                            ? statusVal === 'Worse'
+                          ? statusVal === 'Worse'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                            : statusVal === 'Bad'
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+                              : statusVal === 'Good'
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                                : statusVal === 'Better'
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                                  : statusVal === 'Perfect'
+                                    ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
+                                    : 'bg-slate-100 text-slate-600'
+                          : hwStatus === 'submitted'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                            : overdue
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                              : statusVal === 'Bad'
-                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
-                                : statusVal === 'Good'
-                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                                  : statusVal === 'Better'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
-                                    : statusVal === 'Perfect'
-                                      ? 'bg-yellow-100 dark:bg-yellow-300/30 text-yellow-700'
-                                      : 'bg-slate-100 text-slate-600'
-                            : hwStatus === 'submitted'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
-                              : overdue
-                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+                              : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
                           }`}>
                           {isGraded ? (statusVal || 'Graded') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
                         </span>
