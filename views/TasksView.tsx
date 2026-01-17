@@ -67,25 +67,6 @@ const TasksView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed'>('all');
   const [groupSearch, setGroupSearch] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Filter modal state
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [filterGroupId, setFilterGroupId] = useState('');
-  const [filterTaskType, setFilterTaskType] = useState<'all' | 'group' | 'individual'>('all');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
-  
-  // Temporary filter states (for modal)
-  const [tempFilterGroupId, setTempFilterGroupId] = useState('');
-  const [tempFilterTaskType, setTempFilterTaskType] = useState<'all' | 'group' | 'individual'>('all');
-  const [tempFilterDateFrom, setTempFilterDateFrom] = useState('');
-  const [tempFilterDateTo, setTempFilterDateTo] = useState('');
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalCount, setTotalCount] = useState(0);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,19 +90,10 @@ const TasksView: React.FC = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchHomeworks();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   useEffect(() => {
     fetchHomeworks();
     fetchGroups();
-  }, [currentPage, itemsPerPage, activeFilter, filterGroupId, filterTaskType, filterDateFrom, filterDateTo]);
+  }, []);
 
   useEffect(() => {
     if (assignmentType === 'individual') {
@@ -131,29 +103,11 @@ const TasksView: React.FC = () => {
 
   const fetchHomeworks = async () => {
     try {
-      setIsLoading(true);
-      const statusParam = activeFilter === 'all' || activeFilter === 'overdue' ? '' : `&status=${activeFilter}`;
-      const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
-      const groupParam = filterGroupId ? `&groupId=${filterGroupId}` : '';
-      const typeParam = filterTaskType !== 'all' ? `&taskType=${filterTaskType}` : '';
-      const dateFromParam = filterDateFrom ? `&dateFrom=${filterDateFrom}` : '';
-      const dateToParam = filterDateTo ? `&dateTo=${filterDateTo}` : '';
-      const response = await api.get(`/homework?page=${currentPage}&limit=${itemsPerPage}${statusParam}${searchParam}${groupParam}${typeParam}${dateFromParam}${dateToParam}`);
+      const response = await api.get('/homework');
       const data = response.data;
 
       if (data.success) {
-        let homeworkData = data.data;
-        
-        // Filter overdue on frontend
-        if (activeFilter === 'overdue') {
-          homeworkData = homeworkData.filter(hw => {
-            const deadline = new Date(hw.deadline);
-            return hw.status === 'new' && deadline < new Date();
-          });
-        }
-        
-        setHomeworks(homeworkData);
-        setTotalCount(activeFilter === 'overdue' ? homeworkData.length : (data.totalCount || data.count));
+        setHomeworks(data.data);
       } else {
         throw new Error(data.message || 'Failed to fetch homeworks');
       }
@@ -431,16 +385,16 @@ const TasksView: React.FC = () => {
   // Helper to determine if homework is overdue
   const isOverdue = (hw: Homework) => {
     const deadline = new Date(hw.deadline);
-    return hw.status === 'new' && deadline < new Date();
+    return (hw.status === 'new' || hw.status === 'pending') && deadline < new Date();
   };
 
-  // Calculate total pages from backend count
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-  // Reset to page 1 when filter or items per page changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeFilter, itemsPerPage, searchQuery]);
+  // Filter homeworks based on active filter, including overdue
+  const filteredHomeworks = homeworks.filter(hw => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'overdue') return isOverdue(hw);
+    if ((hw.status === activeFilter) && !isOverdue(hw)) return true;
+    return false;
+  });
 
 
   // Stats counts (exclude overdue from new/pending)
@@ -480,34 +434,8 @@ const TasksView: React.FC = () => {
             <img src="https://picsum.photos/seed/teacher/100/100" className="w-full h-full object-cover" alt="Profile" />
           </button>
         </div> */}
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-[32px] font-bold tracking-tight">Tasks</h1>
-          <div className="flex items-center gap-2 flex-1 max-w-xs">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tasks..."
-                className="w-full h-10 pl-10 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">
-                search
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setTempFilterGroupId(filterGroupId);
-                setTempFilterTaskType(filterTaskType);
-                setTempFilterDateFrom(filterDateFrom);
-                setTempFilterDateTo(filterDateTo);
-                setIsFilterModalOpen(true);
-              }}
-              className="h-10 w-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-primary hover:text-white transition-all"
-            >
-              <span className="material-symbols-outlined text-xl">tune</span>
-            </button>
-          </div>
         </div>
 
         {/* Stats Cards */}
@@ -567,114 +495,16 @@ const TasksView: React.FC = () => {
             );
           })}
         </div>
-
-        {/* Pagination */}
-        {totalCount > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between gap-1 px-2 pb-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                currentPage === 1
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary hover:text-white border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              Prev
-            </button>
-            
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {(() => {
-                const pages = [];
-                
-                if (totalPages <= 7) {
-                  // Show all pages if 7 or less
-                  for (let i = 1; i <= totalPages; i++) {
-                    pages.push(i);
-                  }
-                } else {
-                  // Always show first 3 pages
-                  pages.push(1, 2, 3);
-                  
-                  // Show current page and neighbors if not in first 3 or last 2
-                  if (currentPage > 4 && currentPage < totalPages - 2) {
-                    pages.push('...');
-                    pages.push(currentPage - 1, currentPage, currentPage + 1);
-                  } else if (currentPage === 4) {
-                    pages.push(4);
-                  } else if (currentPage > 3 && currentPage <= totalPages - 2) {
-                    // Show pages between 3 and last 2
-                    for (let i = 4; i <= totalPages - 2; i++) {
-                      if (i >= currentPage - 1 && i <= currentPage + 1) {
-                        if (pages[pages.length - 1] !== i - 1 && typeof pages[pages.length - 1] === 'number') {
-                          pages.push('...');
-                        }
-                        pages.push(i);
-                      }
-                    }
-                  }
-                  
-                  // Add ellipsis before last 2 if needed
-                  if (currentPage < totalPages - 3) {
-                    pages.push('...');
-                  } else if (currentPage === totalPages - 3) {
-                    pages.push(totalPages - 2);
-                  }
-                  
-                  // Always show last 2 pages
-                  pages.push(totalPages - 1, totalPages);
-                }
-                
-                return pages.map((page, idx) => {
-                  if (page === '...') {
-                    return (
-                      <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-slate-400 dark:text-slate-600">
-                        ...
-                      </span>
-                    );
-                  }
-                  
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page as number)}
-                      className={`w-8 h-8 text-xs rounded-lg font-medium transition-all shrink-0 ${
-                        currentPage === page
-                          ? 'bg-primary text-white'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary/10 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-            
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
-                currentPage === totalPages
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary hover:text-white border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-4">
-        {homeworks.length === 0 ? (
+        {filteredHomeworks.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">assignment</span>
             <p>{activeFilter === 'all' ? 'No tasks found' : `No ${activeFilter.replace('_', ' ')} tasks`}</p>
           </div>
         ) : (
-          <>
-          {homeworks.map((homework) => {
+          filteredHomeworks.map((homework) => {
             // Overdue logic for display
             const overdue = isOverdue(homework);
             const statusConfig = overdue
@@ -783,131 +613,9 @@ const TasksView: React.FC = () => {
                 )} */}
               </div>
             );
-          })}
-          </>
+          })
         )}
       </div>
-
-      {/* Filter Modal */}
-      {isFilterModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setIsFilterModalOpen(false)}
-          />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-lg font-bold">Filters</h2>
-              <button
-                onClick={() => setIsFilterModalOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Group Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Group</label>
-                <select
-                  value={tempFilterGroupId}
-                  onChange={(e) => setTempFilterGroupId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">All Groups</option>
-                  {groups.map(group => (
-                    <option key={group._id} value={group._id}>{group.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Task Type Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Task Type</label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'all', label: 'All' },
-                    { value: 'group', label: 'Group' },
-                    { value: 'individual', label: 'Individual' }
-                  ].map(type => (
-                    <button
-                      key={type.value}
-                      onClick={() => setTempFilterTaskType(type.value as any)}
-                      className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-all ${
-                        tempFilterTaskType === type.value
-                          ? 'bg-primary text-white'
-                          : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date Range Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Created Date</label>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">From</label>
-                    <input
-                      type="date"
-                      value={tempFilterDateFrom}
-                      onChange={(e) => setTempFilterDateFrom(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">To</label>
-                    <input
-                      type="date"
-                      value={tempFilterDateTo}
-                      onChange={(e) => setTempFilterDateTo(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-2">
-              <button
-                onClick={() => {
-                  setTempFilterGroupId('');
-                  setTempFilterTaskType('all');
-                  setTempFilterDateFrom('');
-                  setTempFilterDateTo('');
-                  setFilterGroupId('');
-                  setFilterTaskType('all');
-                  setFilterDateFrom('');
-                  setFilterDateTo('');
-                  setIsFilterModalOpen(false);
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
-              >
-                Clear All
-              </button>
-              <button
-                onClick={() => {
-                  setFilterGroupId(tempFilterGroupId);
-                  setFilterTaskType(tempFilterTaskType);
-                  setFilterDateFrom(tempFilterDateFrom);
-                  setFilterDateTo(tempFilterDateTo);
-                  setIsFilterModalOpen(false);
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* FAB Button */}
       <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto pointer-events-none z-40">

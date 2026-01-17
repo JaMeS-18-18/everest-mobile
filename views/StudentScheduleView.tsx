@@ -8,12 +8,6 @@ interface GroupSchedule {
   startTime: string;
   endTime: string;
   daysOfWeek: string[];
-  students?: Array<{
-    _id: string;
-    fullName: string;
-    phone: string;
-    username: string;
-  }>;
 }
 
 interface Teacher {
@@ -28,7 +22,6 @@ const StudentScheduleView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
-  const [activeTab, setActiveTab] = useState<'odd' | 'even'>('odd');
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
@@ -45,12 +38,18 @@ const StudentScheduleView: React.FC = () => {
 
   // Scroll to current day
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && scrollContainerRef.current) {
       const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
       const currentDayIndex = today === 0 ? 6 : today - 1; // Convert to our week format (0 = Monday)
-      // Check if today is odd or even day
-      const isOddDay = [0, 2, 4, 6].includes(currentDayIndex); // Mon, Wed, Fri, Sun
-      setActiveTab(isOddDay ? 'odd' : 'even');
+      const cardWidth = 280 + 16; // card width + gap
+      const scrollPosition = currentDayIndex * cardWidth;
+      
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          left: scrollPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
   }, [isLoading]);
 
@@ -96,30 +95,7 @@ const StudentScheduleView: React.FC = () => {
 
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  
-  // Convert time string to minutes for comparison
-  const timeToMinutes = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
-  
-  // Generate dynamic time slots based on groups
-  const generateTimeSlots = () => {
-    if (groups.length === 0) {
-      return ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-    }
-    
-    const slots = new Set<string>();
-    groups.forEach(group => {
-      const startHour = Math.floor(timeToMinutes(group.startTime) / 60);
-      slots.add(`${String(startHour).padStart(2, '0')}:00`);
-    });
-    
-    return Array.from(slots).sort();
-  };
-  
-  const timeSlots = generateTimeSlots();
-
+  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 
   // Get current time info
   const getCurrentTimeInfo = () => {
@@ -146,6 +122,12 @@ const StudentScheduleView: React.FC = () => {
   };
 
   const currentTimeInfo = getCurrentTimeInfo();
+
+  // Convert time string to minutes for comparison
+  const timeToMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
 
   // Get group color based on index
   const getGroupColor = (index: number) => {
@@ -198,13 +180,6 @@ const StudentScheduleView: React.FC = () => {
     );
   }
 
-  // Find student's group
-  const myGroup = groups.find(group => 
-    group.students?.some((student: any) => 
-      student._id === user._id || student._id === user.studentId
-    )
-  );
-
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
       {/* Header */}
@@ -222,117 +197,159 @@ const StudentScheduleView: React.FC = () => {
                 <span className="material-symbols-outlined text-white">person</span>
               )}
             </div>
-            <h1 className="text-xl font-bold">Timetable</h1>
+            <h1 className="text-xl font-bold">Teacher's Timetable</h1>
           </div>
-          
-          {/* Your Group */}
-          {myGroup && (
-            <div className="text-right">
-              <div className="text-xs text-slate-500 dark:text-slate-400">My Group</div>
-              <div className="text-sm font-bold text-primary">{myGroup.name}</div>
-            </div>
-          )}
+          <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <span className="material-symbols-outlined text-slate-500">search</span>
+          </button>
         </div>
+        
+        {/* Teacher Chip */}
+        {/* <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full whitespace-nowrap">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+              {teacher?.profileImage ? (
+                <img
+                  src={getProfileImageUrl(teacher.profileImage)}
+                  alt={teacher.fullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="material-symbols-outlined text-white text-sm">person</span>
+              )}
+            </div>
+            <span className="text-sm font-medium">{teacher?.fullName || 'Teacher'}</span>
+          </div>
+        </div> */}
       </div>
 
       {/* Timetable */}
-      <div className="flex-1 overflow-y-auto pb-24">
-        {/* Two Column Layout - ODD and EVEN side by side */}
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { id: 'odd', label: 'ODD', days: [0, 2, 4, 6] },
-              { id: 'even', label: 'EVEN', days: [1, 3, 5] }
-            ].map((group, groupIdx) => {
-              const hasClasses = group.days.some(dayIndex => 
-                groups.some(g => g.daysOfWeek.includes(fullDayNames[dayIndex]))
-              );
-              
-              return (
-                <div key={group.id} className="space-y-4">
-                  {/* Column Header */}
-                  <div className="bg-primary text-white rounded-xl px-4 py-3 text-center sticky top-0 z-10">
-                    <h2 className="font-bold text-lg">{group.label}</h2>
-                    <p className="text-xs text-white/80">{group.days.map(idx => weekDays[idx]).join(' • ')}</p>
+      <div className="flex-1 overflow-hidden pb-24">
+        {/* Horizontal Scrolling Days */}
+        <div 
+          ref={scrollContainerRef} 
+          className="flex overflow-x-auto gap-4 px-4 py-4 snap-x snap-mandatory"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#137FEC transparent'
+          }}
+        >
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              .flex.overflow-x-auto::-webkit-scrollbar {
+                height: 4px;
+              }
+              .flex.overflow-x-auto::-webkit-scrollbar-track {
+                background: transparent;
+              }
+              .flex.overflow-x-auto::-webkit-scrollbar-thumb {
+                background: #137FEC;
+                border-radius: 10px;
+              }
+              .flex.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+                background: #0f6ad4;
+              }
+            `
+          }} />
+          {weekDays.map((day, dayIndex) => {
+            const dayName = fullDayNames[dayIndex];
+            const hasClasses = groups.some(group => group.daysOfWeek.includes(dayName));
+            
+            return (
+              <div 
+                key={day} 
+                className={`flex-shrink-0 w-[280px] snap-start ${!hasClasses ? 'opacity-40' : ''}`}
+              >
+                {/* Day Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden h-full">
+                  {/* Day Header */}
+                  <div className="bg-primary px-4 py-3 text-center">
+                    <h3 className="text-white font-bold text-sm">{day}</h3>
+                    <p className="text-white/80 text-xs">{dayName}</p>
                   </div>
                   
-                  {/* Time Slots */}
-                  <div className="space-y-4">
+                  {/* Time Slots Container */}
+                  <div 
+                    className="p-3 space-y-2 overflow-y-auto relative" 
+                    style={{ 
+                      maxHeight: 'calc(100vh - 280px)',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#137FEC transparent'
+                    }}
+                  >
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        .overflow-y-auto::-webkit-scrollbar {
+                          width: 4px;
+                        }
+                        .overflow-y-auto::-webkit-scrollbar-track {
+                          background: transparent;
+                        }
+                        .overflow-y-auto::-webkit-scrollbar-thumb {
+                          background: #137FEC;
+                          border-radius: 10px;
+                        }
+                        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+                          background: #0f6ad4;
+                        }
+                      `
+                    }} />
+                    {/* Current Time Indicator */}
+                    {currentTimeInfo && currentTimeInfo.currentDayIndex === dayIndex && (
+                      <div 
+                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                        style={{ top: `${currentTimeInfo.position}px` }}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 ml-1" />
+                        <div className="h-0.5 bg-red-500 flex-1 mr-3" />
+                        <span className="text-[10px] font-semibold text-red-500 bg-white dark:bg-slate-800 px-1 absolute right-0 -top-2">
+                          {currentTimeInfo.currentTime}
+                        </span>
+                      </div>
+                    )}
+                    
                     {timeSlots.map((time) => {
-                      // Get all groups for this time across all days in this group
-                      const allGroupsInSlot = group.days.flatMap(dayIndex => {
-                        const dayGroups = getGroupsForSlot(dayIndex, time);
-                        return dayGroups.map(g => ({
-                          ...g,
-                          dayIndex,
-                          dayName: fullDayNames[dayIndex],
-                          dayShort: weekDays[dayIndex]
-                        }));
-                      });
-                      
-                      if (allGroupsInSlot.length === 0) return null;
+                      const groupsInSlot = getGroupsForSlot(dayIndex, time);
                       
                       return (
-                        <div key={time} className="relative">
+                        <div key={time} className="relative min-h-[60px]">
+                          {/* Time Label */}
+                          <div className="text-xs text-slate-400 mb-1">{time}</div>
+                          
                           {/* Groups */}
-                          <div className="space-y-3">
-                            {allGroupsInSlot.map((group) => {
-                              const groupIndex = groups.findIndex(g => g._id === group._id);
-                              const startMinutes = timeToMinutes(group.startTime);
-                              const endMinutes = timeToMinutes(group.endTime);
-                              const slotMinutes = timeToMinutes(time);
-                              
-                              // Only show at the hour where it starts
-                              const hourStart = Math.floor(startMinutes / 60) * 60;
-                              if (slotMinutes !== hourStart) return null;
-                              
-                              const duration = endMinutes - startMinutes;
-                              const hours = Math.floor(duration / 60);
-                              const mins = duration % 60;
-                              const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-                              
-                              // Check if current user is in this group
-                              const isMyGroup = group.students?.some(
-                                (student: any) => student._id === user._id || student._id === user.studentId
-                              );
-                              
-                              return (
-                                <div key={`${group._id}-${group.dayIndex}`} className="relative">
-                                  {/* Time Range Label */}
-                                  <div className="flex items-center justify-center gap-2 mb-2">
-                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
-                                      {group.startTime.slice(0, 5)} - {group.endTime.slice(0, 5)}
-                                    </span>
-                                    <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                                      {group.dayShort}
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Group Card */}
-                                  <div
-                                    className={`${getGroupColor(groupIndex)} text-white rounded-2xl p-4 shadow-lg ${
-                                      isMyGroup ? 'ring-4 ring-yellow-400 ring-offset-2' : ''
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {isMyGroup && (
-                                        <span className="material-symbols-outlined text-yellow-300 text-xl">star</span>
-                                      )}
-                                      <div className="flex-1">
-                                        <div className="text-xs opacity-80 mb-1">Group</div>
-                                        <h4 className="font-bold text-lg">{group.name}</h4>
-                                      </div>
-                                    </div>
-                                  </div>
+                          {groupsInSlot.map((group) => {
+                            const groupIndex = groups.findIndex(g => g._id === group._id);
+                            const startMinutes = timeToMinutes(group.startTime);
+                            const endMinutes = timeToMinutes(group.endTime);
+                            const slotMinutes = timeToMinutes(time);
+                            
+                            // Only show at the hour where it starts
+                            const hourStart = Math.floor(startMinutes / 60) * 60;
+                            if (slotMinutes !== hourStart) return null;
+                            
+                            const duration = endMinutes - startMinutes;
+                            const hours = Math.floor(duration / 60);
+                            const mins = duration % 60;
+                            const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                            
+                            return (
+                              <div
+                                key={group._id}
+                                className={`${getGroupColor(groupIndex)} text-white rounded-xl p-3 shadow-md mb-2`}
+                              >
+                                <h4 className="font-bold text-sm mb-1">{group.name}</h4>
+                                <div className="text-xs opacity-90">
+                                  <div>{group.startTime.slice(0, 5)} - {group.endTime.slice(0, 5)}</div>
+                                  <div>{durationText}</div>
                                 </div>
-                              );
-                            })}
-                          </div>
+                              </div>
+                            );
+                          })}
                           
                           {/* Lunch Break */}
-                          {time === '12:00' && allGroupsInSlot.length === 0 && (
-                            <div className="text-center py-4 my-2 border-y border-slate-200 dark:border-slate-700">
-                              <span className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Lunch Break</span>
+                          {time === '12:00' && groupsInSlot.length === 0 && (
+                            <div className="text-center py-2 border-t border-slate-200 dark:border-slate-700">
+                              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Lunch</span>
                             </div>
                           )}
                         </div>
@@ -340,9 +357,9 @@ const StudentScheduleView: React.FC = () => {
                     })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
