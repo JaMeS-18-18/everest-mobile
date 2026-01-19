@@ -21,6 +21,12 @@ interface RankingData {
     groupName: string;
   };
   topStudents: RankingStudent[];
+  monthlyReward?: {
+    name: string;
+    description: string;
+    image: string;
+    deadline?: string;
+  } | null;
 }
 
 const StudentRankingView: React.FC = () => {
@@ -29,6 +35,8 @@ const StudentRankingView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
   const [timePeriod, setTimePeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
   
@@ -78,6 +86,22 @@ const StudentRankingView: React.FC = () => {
     if (rank === 2) return '🥈';
     if (rank === 3) return '🥉';
     return '🎯';
+  };
+
+  const getTimeRemaining = (deadline: string) => {
+    const now = new Date();
+    const end = new Date(deadline);
+    const diff = end.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Ended';
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
   };
 
   if (isLoading) {
@@ -188,6 +212,7 @@ const StudentRankingView: React.FC = () => {
             />
           </div>
 
+          {/* Monthly Reward Banner for Rank 1 */}
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-full">
               <span className="text-2xl">{getEmojiForRank(currentStudent.rank)}</span>
@@ -264,6 +289,111 @@ const StudentRankingView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating Gift Button - Only show if monthly reward exists and period is monthly */}
+      {timePeriod === 'monthly' && rankingData.monthlyReward && rankingData.monthlyReward.name && (
+        <div className="fixed bottom-24 left-0 right-0 z-40 flex justify-end px-6 max-w-md mx-auto pointer-events-none">
+          <button
+            onClick={() => setIsRewardModalOpen(true)}
+            className="relative w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500 text-white shadow-xl hover:shadow-2xl transition-all transform hover:scale-110 flex items-center justify-center group pointer-events-auto"
+          >
+            {/* Animated pulse ring */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-pink-500 opacity-75 animate-ping" style={{ animationDuration: '2s' }}></div>
+            
+            {/* Button content */}
+            <div className="relative z-10 flex flex-col items-center justify-center">
+              <span className="material-symbols-outlined text-[32px] drop-shadow-lg">card_giftcard</span>
+            </div>
+            
+            {/* Sparkle effect */}
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
+              <span className="text-yellow-500 text-xs">✨</span>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Reward Modal */}
+      {isRewardModalOpen && rankingData.monthlyReward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsRewardModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl p-6 animate-slide-up">
+            <button 
+              onClick={() => setIsRewardModalOpen(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-[32px]">emoji_events</span>
+              </div>
+              <h2 className="text-2xl font-bold mb-1">Monthly Reward</h2>
+              <p className="text-sm text-slate-500">Be #1 to win this prize!</p>
+              
+              {/* Countdown Timer */}
+              {rankingData.monthlyReward.deadline && (
+                <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-[18px]">schedule</span>
+                  <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                    {getTimeRemaining(rankingData.monthlyReward.deadline)} remaining
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {rankingData.monthlyReward.image && (
+              <div className="mb-4">
+                <img 
+                  src={rankingData.monthlyReward.image} 
+                  alt={rankingData.monthlyReward.name}
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="w-full h-40 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <p className="text-xs text-center text-slate-500 mt-2">Click to view full size</p>
+              </div>
+            )}
+
+            <h3 className="text-xl font-bold mb-2">{rankingData.monthlyReward.name}</h3>
+            {rankingData.monthlyReward.description && (
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                {rankingData.monthlyReward.description}
+              </p>
+            )}
+
+            <div className="p-4 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
+              <p className="text-sm font-medium text-purple-900 dark:text-purple-200 text-center">
+                🏆 Finish this month as the top student to win!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Full Screen Modal */}
+      {isImageModalOpen && rankingData.monthlyReward?.image && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90" onClick={() => setIsImageModalOpen(false)}>
+          <button 
+            onClick={() => setIsImageModalOpen(false)}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white"
+          >
+            <span className="material-symbols-outlined text-[24px]">close</span>
+          </button>
+          <img 
+            src={rankingData.monthlyReward.image} 
+            alt={rankingData.monthlyReward.name}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

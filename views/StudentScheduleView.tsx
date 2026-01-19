@@ -25,7 +25,7 @@ const StudentScheduleView: React.FC = () => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
-  
+
   const getProfileImageUrl = (url?: string) => {
     if (!url) return undefined;
     if (url.startsWith('http')) return url;
@@ -43,7 +43,7 @@ const StudentScheduleView: React.FC = () => {
       const currentDayIndex = today === 0 ? 6 : today - 1; // Convert to our week format (0 = Monday)
       const cardWidth = 280 + 16; // card width + gap
       const scrollPosition = currentDayIndex * cardWidth;
-      
+
       setTimeout(() => {
         scrollContainerRef.current?.scrollTo({
           left: scrollPosition,
@@ -61,7 +61,7 @@ const StudentScheduleView: React.FC = () => {
 
       if (data.success && data.user.studentInfo) {
         const teacherId = data.user.studentInfo.teacherId;
-        
+
         if (!teacherId) {
           setError('No teacher assigned');
           return;
@@ -105,15 +105,15 @@ const StudentScheduleView: React.FC = () => {
     const currentMinutes = hours * 60 + minutes;
     const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday
     const currentDayIndex = currentDay === 0 ? 6 : currentDay - 1; // Convert to our format
-    
+
     // Only show if within schedule hours (8:00 - 17:00)
     if (currentMinutes < 8 * 60 || currentMinutes > 17 * 60) return null;
-    
+
     const startMinutes = 8 * 60; // 08:00
     const minutesFromStart = currentMinutes - startMinutes;
     const timeSlotHeight = 60; // Each hour slot is approximately 60px
     const position = (minutesFromStart / 60) * (timeSlotHeight + 8); // 8px is spacing
-    
+
     return {
       position,
       currentDayIndex,
@@ -148,13 +148,13 @@ const StudentScheduleView: React.FC = () => {
     const dayName = fullDayNames[dayIndex];
     const slotMinutes = timeToMinutes(timeSlot);
     const nextSlotMinutes = slotMinutes + 60; // Next hour
-    
+
     return groups.filter(group => {
       if (!group.daysOfWeek.includes(dayName)) return false;
-      
+
       const startMinutes = timeToMinutes(group.startTime);
       const endMinutes = timeToMinutes(group.endTime);
-      
+
       // Show group if it starts or continues during this hour slot
       return startMinutes < nextSlotMinutes && endMinutes > slotMinutes;
     });
@@ -203,7 +203,7 @@ const StudentScheduleView: React.FC = () => {
             <span className="material-symbols-outlined text-slate-500">search</span>
           </button>
         </div>
-        
+
         {/* Teacher Chip */}
         {/* <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
           <div className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full whitespace-nowrap">
@@ -226,8 +226,8 @@ const StudentScheduleView: React.FC = () => {
       {/* Timetable */}
       <div className="flex-1 overflow-hidden pb-24">
         {/* Horizontal Scrolling Days */}
-        <div 
-          ref={scrollContainerRef} 
+        <div
+          ref={scrollContainerRef}
           className="flex overflow-x-auto gap-4 px-4 py-4 snap-x snap-mandatory"
           style={{
             scrollbarWidth: 'thin',
@@ -254,10 +254,10 @@ const StudentScheduleView: React.FC = () => {
           {weekDays.map((day, dayIndex) => {
             const dayName = fullDayNames[dayIndex];
             const hasClasses = groups.some(group => group.daysOfWeek.includes(dayName));
-            
+
             return (
-              <div 
-                key={day} 
+              <div
+                key={day}
                 className={`flex-shrink-0 w-[280px] snap-start ${!hasClasses ? 'opacity-40' : ''}`}
               >
                 {/* Day Card */}
@@ -267,11 +267,11 @@ const StudentScheduleView: React.FC = () => {
                     <h3 className="text-white font-bold text-sm">{day}</h3>
                     <p className="text-white/80 text-xs">{dayName}</p>
                   </div>
-                  
+
                   {/* Time Slots Container */}
-                  <div 
-                    className="p-3 space-y-2 overflow-y-auto relative" 
-                    style={{ 
+                  <div
+                    className="p-3 space-y-2 overflow-y-auto relative"
+                    style={{
                       maxHeight: 'calc(100vh - 280px)',
                       scrollbarWidth: 'thin',
                       scrollbarColor: '#137FEC transparent'
@@ -296,7 +296,7 @@ const StudentScheduleView: React.FC = () => {
                     }} />
                     {/* Current Time Indicator */}
                     {currentTimeInfo && currentTimeInfo.currentDayIndex === dayIndex && (
-                      <div 
+                      <div
                         className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                         style={{ top: `${currentTimeInfo.position}px` }}
                       >
@@ -307,31 +307,31 @@ const StudentScheduleView: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    
+
                     {timeSlots.map((time) => {
                       const groupsInSlot = getGroupsForSlot(dayIndex, time);
-                      
+
                       return (
                         <div key={time} className="relative min-h-[60px]">
                           {/* Time Label */}
                           <div className="text-xs text-slate-400 mb-1">{time}</div>
-                          
+
                           {/* Groups */}
                           {groupsInSlot.map((group) => {
                             const groupIndex = groups.findIndex(g => g._id === group._id);
                             const startMinutes = timeToMinutes(group.startTime);
                             const endMinutes = timeToMinutes(group.endTime);
                             const slotMinutes = timeToMinutes(time);
-                            
+
                             // Only show at the hour where it starts
                             const hourStart = Math.floor(startMinutes / 60) * 60;
                             if (slotMinutes !== hourStart) return null;
-                            
+
                             const duration = endMinutes - startMinutes;
                             const hours = Math.floor(duration / 60);
                             const mins = duration % 60;
                             const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-                            
+
                             return (
                               <div
                                 key={group._id}
@@ -345,7 +345,7 @@ const StudentScheduleView: React.FC = () => {
                               </div>
                             );
                           })}
-                          
+
                           {/* Lunch Break */}
                           {time === '12:00' && groupsInSlot.length === 0 && (
                             <div className="text-center py-2 border-t border-slate-200 dark:border-slate-700">

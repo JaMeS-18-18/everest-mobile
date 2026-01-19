@@ -66,11 +66,22 @@ const TasksView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed'>('all');
-  const [groupSearch, setGroupSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   
-  // Pagination state
+  // Pagination state for API
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Status counts from backend
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    new: 0,
+    pending: 0,
+    reviewed: 0,
+    overdue: 0
+  });
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,7 +102,6 @@ const TasksView: React.FC = () => {
   const [recreateStudentSearch, setRecreateStudentSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
-
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
@@ -105,13 +115,41 @@ const TasksView: React.FC = () => {
     }
   }, [assignmentType]);
 
-  const fetchHomeworks = async () => {
+  const handleSearch = () => {
+    fetchHomeworks(1, searchQuery);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    fetchHomeworks(1, '');
+  };
+
+  const fetchHomeworks = async (page = 1, search = '') => {
     try {
-      const response = await api.get('/homework');
+      if (page === 1) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+      
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
+      const response = await api.get(`/homework?page=${page}&limit=5${searchParam}`);
       const data = response.data;
 
       if (data.success) {
-        setHomeworks(data.data);
+        if (page === 1) {
+          setHomeworks(data.data);
+        } else {
+          setHomeworks(prev => [...prev, ...data.data]);
+        }
+        setTotalPages(data.pages || 1);
+        setTotalCount(data.total || data.count);
+        setCurrentPage(page);
+        
+        // Update status counts from backend
+        if (data.statusCounts) {
+          setStatusCounts(data.statusCounts);
+        }
       } else {
         throw new Error(data.message || 'Failed to fetch homeworks');
       }
@@ -119,6 +157,13 @@ const TasksView: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to fetch homeworks');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadMoreHomeworks = () => {
+    if (currentPage < totalPages && !isLoadingMore) {
+      fetchHomeworks(currentPage + 1, searchQuery);
     }
   };
 
@@ -389,7 +434,8 @@ const TasksView: React.FC = () => {
   // Helper to determine if homework is overdue
   const isOverdue = (hw: Homework) => {
     const deadline = new Date(hw.deadline);
-    return (hw.status === 'new' || hw.status === 'pending') && deadline < new Date();
+    // Only 'new' status can be overdue. 'pending' (submitted) tasks should not be marked overdue
+    return hw.status === 'new' && deadline < new Date();
   };
 
   // Filter homeworks based on active filter, including overdue
@@ -399,13 +445,6 @@ const TasksView: React.FC = () => {
     if ((hw.status === activeFilter) && !isOverdue(hw)) return true;
     return false;
   });
-
-
-  // Stats counts (exclude overdue from new/pending)
-  const newCount = homeworks.filter(hw => hw.status === 'new' && !isOverdue(hw)).length;
-  const pendingCount = homeworks.filter(hw => hw.status === 'pending' && !isOverdue(hw)).length;
-  const reviewedCount = homeworks.filter(hw => hw.status === 'reviewed').length;
-  const overdueCount = homeworks.filter(isOverdue).length;
 
   if (isLoading) {
     return <Loader />;
@@ -449,32 +488,61 @@ const TasksView: React.FC = () => {
               <span className="material-symbols-outlined text-blue-500 text-lg">schedule</span>
               <span className="text-xs text-blue-600 font-medium">New</span>
             </div>
-            <span className="text-xl font-bold text-blue-600">{newCount}</span>
+            <span className="text-xl font-bold text-blue-600">{statusCounts.new}</span>
           </div>
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 border border-orange-100 dark:border-orange-800">
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-orange-500 text-lg">pending</span>
               <span className="text-xs text-orange-600 font-medium">Pending</span>
             </div>
-            <span className="text-xl font-bold text-orange-600">{pendingCount}</span>
+            <span className="text-xl font-bold text-orange-600">{statusCounts.pending}</span>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 border border-green-100 dark:border-green-800">
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-green-500 text-lg">check_circle</span>
               <span className="text-xs text-green-600 font-medium">Reviewed</span>
             </div>
-            <span className="text-xl font-bold text-green-600">{reviewedCount}</span>
+            <span className="text-xl font-bold text-green-600">{statusCounts.reviewed}</span>
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative mb-4 flex gap-2">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Search by group or student name..."
+              className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleSearch}
+            className="h-11 px-4 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[20px]">search</span>
+          </button>
         </div>
 
         {/* Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
           {[
-            { key: 'all', label: 'All', count: homeworks.length },
-            { key: 'new', label: 'New', count: newCount },
-            { key: 'pending', label: 'Pending', count: pendingCount },
-            { key: 'reviewed', label: 'Reviewed', count: reviewedCount },
-            { key: 'overdue', label: 'Overdue', count: overdueCount },
+            { key: 'all', label: 'All', count: statusCounts.all },
+            { key: 'new', label: 'New', count: statusCounts.new },
+            { key: 'pending', label: 'Pending', count: statusCounts.pending },
+            { key: 'reviewed', label: 'Reviewed', count: statusCounts.reviewed },
+            { key: 'overdue', label: 'Overdue', count: statusCounts.overdue },
           ].map((filter) => {
             const isOverdueTab = filter.key === 'overdue';
             return (
@@ -618,6 +686,29 @@ const TasksView: React.FC = () => {
               </div>
             );
           })
+        )}
+        
+        {/* Load More Button */}
+        {currentPage < totalPages && filteredHomeworks.length > 0 && (
+          <div className="flex justify-center py-4">
+            <button
+              onClick={loadMoreHomeworks}
+              disabled={isLoadingMore}
+              className="px-6 py-3 bg-primary text-white rounded-full font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isLoadingMore ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin">refresh</span>
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">expand_more</span>
+                  Load More ({homeworks.length} of {totalCount})
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
 
