@@ -105,9 +105,14 @@ const TasksView: React.FC = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    fetchHomeworks();
+    fetchHomeworks(1, '', 'all');
     fetchGroups();
   }, []);
+
+  // Refetch when activeFilter changes
+  useEffect(() => {
+    fetchHomeworks(1, searchQuery, activeFilter);
+  }, [activeFilter]);
 
   useEffect(() => {
     if (assignmentType === 'individual') {
@@ -116,15 +121,15 @@ const TasksView: React.FC = () => {
   }, [assignmentType]);
 
   const handleSearch = () => {
-    fetchHomeworks(1, searchQuery);
+    fetchHomeworks(1, searchQuery, activeFilter);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
-    fetchHomeworks(1, '');
+    fetchHomeworks(1, '', activeFilter);
   };
 
-  const fetchHomeworks = async (page = 1, search = '') => {
+  const fetchHomeworks = async (page = 1, search = '', status: string = 'all') => {
     try {
       if (page === 1) {
         setIsLoading(true);
@@ -133,7 +138,9 @@ const TasksView: React.FC = () => {
       }
       
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-      const response = await api.get(`/homework?page=${page}&limit=5${searchParam}`);
+      // Send status param for filtering (except 'all' and 'overdue' which are handled client-side)
+      const statusParam = (status && status !== 'all' && status !== 'overdue') ? `&status=${status}` : '';
+      const response = await api.get(`/homework?page=${page}&limit=5${searchParam}${statusParam}`);
       const data = response.data;
 
       if (data.success) {
@@ -163,7 +170,7 @@ const TasksView: React.FC = () => {
 
   const loadMoreHomeworks = () => {
     if (currentPage < totalPages && !isLoadingMore) {
-      fetchHomeworks(currentPage + 1, searchQuery);
+      fetchHomeworks(currentPage + 1, searchQuery, activeFilter);
     }
   };
 
@@ -376,7 +383,7 @@ const TasksView: React.FC = () => {
       if (response.data.success) {
         setIsModalOpen(false);
         resetModal();
-        fetchHomeworks();
+        fetchHomeworks(1, searchQuery, activeFilter);
       } else {
         throw new Error(response.data.message || 'Failed to create homework');
       }
@@ -439,11 +446,12 @@ const TasksView: React.FC = () => {
   };
 
   // Filter homeworks based on active filter, including overdue
+  // For statuses filtered by backend (new, pending, reviewed), just return all
   const filteredHomeworks = homeworks.filter(hw => {
     if (activeFilter === 'all') return true;
+    if (activeFilter === 'new' || activeFilter === 'pending' || activeFilter === 'reviewed') return true; // Already filtered by backend
     if (activeFilter === 'overdue') return isOverdue(hw);
-    if ((hw.status === activeFilter) && !isOverdue(hw)) return true;
-    return false;
+    return true;
   });
 
   if (isLoading) {
@@ -1306,7 +1314,7 @@ const TasksView: React.FC = () => {
                     });
                     if (response.data.success) {
                       closeEditModal();
-                      fetchHomeworks();
+                      fetchHomeworks(1, searchQuery, activeFilter);
                     } else {
                       throw new Error(response.data.message || 'Failed to recreate homework');
                     }
