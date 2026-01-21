@@ -26,6 +26,9 @@ import SuperadminAdminsView from './views/SuperadminAdminsView';
 import 'react-toastify/dist/ReactToastify.css';
 import SnowEffect from './components/SnowEffect';
 import SuperadminDashboardView from './views/SuperadminDashboardView';
+import ParentHomeView from './views/ParentHomeView';
+import ParentChildDetailView from './views/ParentChildDetailView';
+import ParentBottomNav from './components/ParentBottomNav';
 
 const App: React.FC = () => {
   // Example: dark mode state (can be expanded as needed)
@@ -45,6 +48,7 @@ const App: React.FC = () => {
         if (user.role === 'superadmin' || user.role === 'Superadmin') return UserRole.SUPERADMIN;
         else if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
         else if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
+        else if (user.role === 'parent' || user.role === 'Parent') return UserRole.PARENT;
         else return UserRole.STUDENT;
       } catch { }
     }
@@ -71,6 +75,8 @@ const App: React.FC = () => {
       navigate('/groups', { replace: true });
     } else if (role === UserRole.ADMIN) {
       navigate('/admin/teachers', { replace: true });
+    } else if (role === UserRole.PARENT) {
+      navigate('/parent/home', { replace: true });
     } else {
       navigate('/student/home', { replace: true });
     }
@@ -129,6 +135,10 @@ const App: React.FC = () => {
               <Route path="/student/ranking" element={<StudentRankingView />} />
               <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
               <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
+              {/* Parent routes */}
+              <Route path="/parent/home" element={<ParentHomeView />} />
+              <Route path="/parent/child/:studentId" element={<ParentChildDetailView />} />
+              <Route path="/parent/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               {/* Catch-all route for unknown paths */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
@@ -139,7 +149,10 @@ const App: React.FC = () => {
       {isLoggedIn && role === UserRole.SUPERADMIN && location.pathname.startsWith('/superadmin') && (
         <SuperadminBottomNav />
       )}
-      {isLoggedIn && role !== UserRole.SUPERADMIN && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+      {isLoggedIn && role === UserRole.PARENT && location.pathname.startsWith('/parent') && (
+        <ParentBottomNav />
+      )}
+      {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
     </div>
