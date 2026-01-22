@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { UserRole } from '../types';
 import api from '../api';
 import Logo from '../logo.png'
-import archaIcon from '../archaIcon.png'
+// import archaIcon from '../archaIcon.png'
 interface LoginViewProps {
   onLogin: (role: UserRole) => void;
 }
@@ -154,7 +154,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           >
             <img src={Logo} alt="Everest Logo" className="w-28 h-28 object-contain" />
           </motion.div>
-           <motion.img
+           {/* <motion.img
               src={archaIcon}
               alt="archa"
               width={30}
@@ -173,7 +173,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
                 transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
               }}
-            />
+            /> */}
           <div className='flex items-center justify-center gap-2'>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}

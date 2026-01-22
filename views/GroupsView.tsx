@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Loader from '@/components/Loader';
 import { motion } from 'framer-motion';
-import archaIcon from '../archaIcon.png'
+// import archaIcon from '../archaIcon.png'
 
 interface Student {
   _id: string;
@@ -140,7 +140,7 @@ const GroupsView: React.FC = () => {
               <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
               <div className='flex'>
                 <span className="text-lg font-bold">{user.fullName || 'Teacher'}</span>
-                <motion.img
+                {/* <motion.img
               src={archaIcon}
               alt="archa"
               width={20}
@@ -159,7 +159,7 @@ const GroupsView: React.FC = () => {
                 filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
                 transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
               }}
-            />
+            /> */}
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View } from '../types';
 import api from '../api';
 import { motion } from 'framer-motion';
-import archaIcon from '../archaIcon.png'
+// import archaIcon from '../archaIcon.png'
 
 interface ImageFile {
   filename: string;
@@ -220,7 +220,7 @@ const StudentHomeView: React.FC = () => {
               <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
               <div className='flex'>
                 <span className="text-lg font-bold">{user.fullName || 'Student'}</span>
-                <motion.img
+                {/* <motion.img
                   src={archaIcon}
                   alt="archa"
                   width={20}
@@ -239,7 +239,7 @@ const StudentHomeView: React.FC = () => {
                     filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
                     transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
                   }}
-                />
+                /> */}
               </div>
               {groupName && (
                 <div className="flex items-center gap-1 mt-0.5">
