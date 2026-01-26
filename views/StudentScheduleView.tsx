@@ -16,13 +16,26 @@ interface Teacher {
   profileImage?: string;
 }
 
+interface PracticeLesson {
+  _id: string;
+  groupId: string;
+  groupName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+}
+
 const StudentScheduleView: React.FC = () => {
   const [groups, setGroups] = useState<GroupSchedule[]>([]);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [practiceLessons, setPracticeLessons] = useState<PracticeLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
+    const today = new Date().getDay();
+    return today === 0 ? 6 : today - 1; // Convert Sunday=0 to our format (Mon=0)
+  });
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
 
@@ -35,23 +48,6 @@ const StudentScheduleView: React.FC = () => {
   useEffect(() => {
     fetchSchedule();
   }, []);
-
-  // Scroll to current day
-  useEffect(() => {
-    if (!isLoading && scrollContainerRef.current) {
-      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const currentDayIndex = today === 0 ? 6 : today - 1; // Convert to our week format (0 = Monday)
-      const cardWidth = 280 + 16; // card width + gap
-      const scrollPosition = currentDayIndex * cardWidth;
-
-      setTimeout(() => {
-        scrollContainerRef.current?.scrollTo({
-          left: scrollPosition,
-          behavior: 'smooth'
-        });
-      }, 100);
-    }
-  }, [isLoading]);
 
   const fetchSchedule = async () => {
     try {
@@ -67,21 +63,20 @@ const StudentScheduleView: React.FC = () => {
           return;
         }
 
-        // Fetch teacher info
-        const teacherResponse = await api.get(`/users/${teacherId}`);
+        const [teacherResponse, groupsResponse, practiceResponse] = await Promise.all([
+          api.get(`/users/${teacherId}`),
+          api.get('/groups'),
+          api.get('/practice-lessons/student')
+        ]);
+        
         if (teacherResponse.data.success) {
           setTeacher(teacherResponse.data.data);
         }
-
-        // Fetch all groups for this teacher
-        const groupsResponse = await api.get('/groups');
-        console.log('Groups API response:', groupsResponse.data);
         if (groupsResponse.data.success) {
-          console.log('Fetched groups count:', groupsResponse.data.count);
-          console.log('Fetched groups:', groupsResponse.data.data);
           setGroups(groupsResponse.data.data);
-        } else {
-          console.log('Failed to fetch groups:', groupsResponse.data);
+        }
+        if (practiceResponse.data.success) {
+          setPracticeLessons(practiceResponse.data.data);
         }
       } else {
         setError('You are not assigned to any teacher yet');
@@ -93,37 +88,18 @@ const StudentScheduleView: React.FC = () => {
     }
   };
 
-  const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 
-  // Get current time info
-  const getCurrentTimeInfo = () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const currentMinutes = hours * 60 + minutes;
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday
-    const currentDayIndex = currentDay === 0 ? 6 : currentDay - 1; // Convert to our format
-
-    // Only show if within schedule hours (8:00 - 17:00)
-    if (currentMinutes < 8 * 60 || currentMinutes > 17 * 60) return null;
-
-    const startMinutes = 8 * 60; // 08:00
-    const minutesFromStart = currentMinutes - startMinutes;
-    const timeSlotHeight = 60; // Each hour slot is approximately 60px
-    const position = (minutesFromStart / 60) * (timeSlotHeight + 8); // 8px is spacing
-
-    return {
-      position,
-      currentDayIndex,
-      currentTime: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-    };
+  // Get current day index (Mon=0)
+  const getCurrentDayIndex = () => {
+    const today = new Date().getDay();
+    return today === 0 ? 6 : today - 1;
   };
 
-  const currentTimeInfo = getCurrentTimeInfo();
+  const isToday = (dayIndex: number) => dayIndex === getCurrentDayIndex();
 
-  // Convert time string to minutes for comparison
+  // Convert time string to minutes
   const timeToMinutes = (time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -132,34 +108,106 @@ const StudentScheduleView: React.FC = () => {
   // Get group color based on index
   const getGroupColor = (index: number) => {
     const colors = [
-      'bg-blue-500',
-      'bg-purple-500',
-      'bg-cyan-500',
-      'bg-green-500',
-      'bg-orange-500',
-      'bg-pink-500',
-      'bg-indigo-500',
+      { bg: 'bg-blue-500', light: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-500' },
+      { bg: 'bg-purple-500', light: 'bg-purple-50 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-500' },
+      { bg: 'bg-cyan-500', light: 'bg-cyan-50 dark:bg-cyan-900/30', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-500' },
+      { bg: 'bg-green-500', light: 'bg-green-50 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', border: 'border-green-500' },
+      { bg: 'bg-orange-500', light: 'bg-orange-50 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-500' },
+      { bg: 'bg-pink-500', light: 'bg-pink-50 dark:bg-pink-900/30', text: 'text-pink-600 dark:text-pink-400', border: 'border-pink-500' },
+      { bg: 'bg-indigo-500', light: 'bg-indigo-50 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-500' },
     ];
     return colors[index % colors.length];
   };
 
-  // Find groups for specific day and time slot
-  const getGroupsForSlot = (dayIndex: number, timeSlot: string) => {
+  // Get classes for selected day
+  const getClassesForDay = (dayIndex: number) => {
     const dayName = fullDayNames[dayIndex];
-    const slotMinutes = timeToMinutes(timeSlot);
-    const nextSlotMinutes = slotMinutes + 60; // Next hour
-
-    return groups.filter(group => {
-      if (!group.daysOfWeek.includes(dayName)) return false;
-
-      const startMinutes = timeToMinutes(group.startTime);
-      const endMinutes = timeToMinutes(group.endTime);
-
-      // Show group if it starts or continues during this hour slot
-      return startMinutes < nextSlotMinutes && endMinutes > slotMinutes;
-    });
+    return groups
+      .filter(group => group.daysOfWeek.includes(dayName))
+      .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
   };
 
+  // Check if a class is currently active
+  const isClassActive = (group: GroupSchedule, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = timeToMinutes(group.startTime);
+    const endMinutes = timeToMinutes(group.endTime);
+    
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  };
+
+  // Check if a class is upcoming (within next 30 mins)
+  const isClassUpcoming = (group: GroupSchedule, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = timeToMinutes(group.startTime);
+    
+    return startMinutes > currentMinutes && startMinutes - currentMinutes <= 30;
+  };
+
+   const getDateForDay = (dayIndex: number) => {
+    const today = new Date();
+    const currentDayIndex = getCurrentDayIndex();
+    const diff = dayIndex - currentDayIndex;
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + diff);
+    return targetDate;
+  };
+
+
+  // Check if class has ended
+  const isClassEnded = (group: GroupSchedule, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const endMinutes = timeToMinutes(group.endTime);
+    
+    return currentMinutes >= endMinutes;
+  };
+
+  // Get practice lessons for selected day
+  const getPracticeLessonsForDay = (dayIndex: number) => {
+    const targetDate = getDateForDay(dayIndex);
+    const dateStr = targetDate.toISOString().split('T')[0];
+    return practiceLessons
+      .filter(p => p.date === dateStr)
+      .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  };
+
+  // Check practice lesson status
+  const isPracticeActive = (practice: PracticeLesson, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    return currentMinutes >= timeToMinutes(practice.startTime) && currentMinutes < timeToMinutes(practice.endTime);
+  };
+
+  const isPracticeUpcoming = (practice: PracticeLesson, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = timeToMinutes(practice.startTime);
+    return startMinutes > currentMinutes && startMinutes - currentMinutes <= 30;
+  };
+
+  const isPracticeEnded = (practice: PracticeLesson, dayIndex: number) => {
+    if (!isToday(dayIndex)) return false;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    return currentMinutes >= timeToMinutes(practice.endTime);
+  };
+
+  const classesForSelectedDay = getClassesForDay(selectedDayIndex);
+  const practicesForSelectedDay = getPracticeLessonsForDay(selectedDayIndex);
+
+  // Get date for display
+ 
   if (isLoading) {
     return <Loader />;
   }
@@ -167,12 +215,12 @@ const StudentScheduleView: React.FC = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <span className="material-symbols-outlined text-4xl text-orange-500 mb-2">calendar_month</span>
+        <span className="material-symbols-outlined text-5xl text-orange-500 mb-3">calendar_month</span>
         <p className="text-orange-500 text-center font-semibold mb-2">{error}</p>
         <p className="text-slate-500 text-sm text-center mb-4">Please contact your teacher</p>
         <button
           onClick={fetchSchedule}
-          className="px-4 py-2 bg-primary text-white rounded-lg"
+          className="px-6 py-3 bg-primary text-white rounded-xl font-medium"
         >
           Retry
         </button>
@@ -181,185 +229,357 @@ const StudentScheduleView: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
       {/* Header */}
-      <div className="p-4 pt-12 bg-white dark:bg-slate-800 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center overflow-hidden">
-              {teacher?.profileImage ? (
-                <img
-                  src={getProfileImageUrl(teacher.profileImage)}
-                  alt={teacher.fullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="material-symbols-outlined text-white">person</span>
-              )}
-            </div>
-            <h1 className="text-xl font-bold">Teacher's Timetable</h1>
+      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-4 pt-12 pb-6 rounded-b-3xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+            {teacher?.profileImage ? (
+              <img
+                src={getProfileImageUrl(teacher.profileImage)}
+                alt={teacher.fullName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="material-symbols-outlined text-white text-2xl">person</span>
+            )}
           </div>
-          <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-            <span className="material-symbols-outlined text-slate-500">search</span>
-          </button>
+          <div>
+            <h1 className="text-xl font-bold">My Schedule</h1>
+            <p className="text-blue-100 text-sm">
+              <span className="opacity-70">Teacher:</span> {teacher?.fullName || 'Not assigned'}
+            </p>
+          </div>
         </div>
 
-        {/* Teacher Chip */}
-        {/* <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full whitespace-nowrap">
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-              {teacher?.profileImage ? (
-                <img
-                  src={getProfileImageUrl(teacher.profileImage)}
-                  alt={teacher.fullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="material-symbols-outlined text-white text-sm">person</span>
-              )}
-            </div>
-            <span className="text-sm font-medium">{teacher?.fullName || 'Teacher'}</span>
-          </div>
-        </div> */}
+        {/* Week Day Selector */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {weekDays.map((day, index) => {
+            const date = getDateForDay(index);
+            const regularClasses = getClassesForDay(index).length;
+            const practices = getPracticeLessonsForDay(index).length;
+            const hasClasses = regularClasses > 0 || practices > 0;
+            const selected = selectedDayIndex === index;
+            const today = isToday(index);
+
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDayIndex(index)}
+                className={`flex flex-col items-center min-w-[52px] py-2 px-3 rounded-xl transition-all ${
+                  selected
+                    ? 'bg-white text-blue-600 shadow-lg'
+                    : today
+                    ? 'bg-white/30 text-white'
+                    : 'bg-white/10 text-white/80'
+                }`}
+              >
+                <span className="text-xs font-medium">{day}</span>
+                <span className={`text-lg font-bold ${selected ? 'text-blue-600' : ''}`}>
+                  {date.getDate()}
+                </span>
+                {hasClasses && (
+                  <div className="flex gap-0.5 mt-1">
+                    {regularClasses > 0 && (
+                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-blue-500' : 'bg-white'}`} />
+                    )}
+                    {practices > 0 && (
+                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-orange-500' : 'bg-orange-300'}`} />
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Timetable */}
-      <div className="flex-1 overflow-hidden pb-24">
-        {/* Horizontal Scrolling Days */}
-        <div
-          ref={scrollContainerRef}
-          className="flex overflow-x-auto gap-4 px-4 py-4 snap-x snap-mandatory"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#137FEC transparent'
-          }}
-        >
-          <style dangerouslySetInnerHTML={{
-            __html: `
-              .flex.overflow-x-auto::-webkit-scrollbar {
-                height: 4px;
-              }
-              .flex.overflow-x-auto::-webkit-scrollbar-track {
-                background: transparent;
-              }
-              .flex.overflow-x-auto::-webkit-scrollbar-thumb {
-                background: #137FEC;
-                border-radius: 10px;
-              }
-              .flex.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-                background: #0f6ad4;
-              }
-            `
-          }} />
-          {weekDays.map((day, dayIndex) => {
-            const dayName = fullDayNames[dayIndex];
-            const hasClasses = groups.some(group => group.daysOfWeek.includes(dayName));
+      {/* Selected Day Info */}
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+              {fullDayNames[selectedDayIndex]}
+              {isToday(selectedDayIndex) && (
+                <span className="ml-2 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                  Today
+                </span>
+              )}
+            </h2>
+            <p className="text-slate-500 text-sm">
+              {getDateForDay(selectedDayIndex).toLocaleDateString('en-US', { 
+                month: 'long', 
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {classesForSelectedDay.length} {classesForSelectedDay.length === 1 ? 'class' : 'classes'}
+              </span>
+            </div>
+            {practicesForSelectedDay.length > 0 && (
+              <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
+                <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                  {practicesForSelectedDay.length} practice
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Classes List */}
+      <div className="px-4 space-y-3">
+        {classesForSelectedDay.length === 0 && practicesForSelectedDay.length === 0 ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center">
+            <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">
+              beach_access
+            </span>
+            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              No Classes
+            </h3>
+            <p className="text-slate-500 text-sm">
+              Enjoy your free day! 🎉
+            </p>
+          </div>
+        ) : (
+          <>
+          {classesForSelectedDay.map((group) => {
+            const groupIndex = groups.findIndex(g => g._id === group._id);
+            const colors = getGroupColor(groupIndex);
+            const duration = timeToMinutes(group.endTime) - timeToMinutes(group.startTime);
+            const hours = Math.floor(duration / 60);
+            const mins = duration % 60;
+            const durationText = hours > 0 
+              ? mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+              : `${mins}m`;
+
+            const active = isClassActive(group, selectedDayIndex);
+            const upcoming = isClassUpcoming(group, selectedDayIndex);
+            const ended = isClassEnded(group, selectedDayIndex);
 
             return (
               <div
-                key={day}
-                className={`flex-shrink-0 w-[280px] snap-start ${!hasClasses ? 'opacity-40' : ''}`}
+                key={group._id}
+                className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 ${
+                  active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
+                }`}
               >
-                {/* Day Card */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden h-full">
-                  {/* Day Header */}
-                  <div className="bg-primary px-4 py-3 text-center">
-                    <h3 className="text-white font-bold text-sm">{day}</h3>
-                    <p className="text-white/80 text-xs">{dayName}</p>
-                  </div>
-
-                  {/* Time Slots Container */}
-                  <div
-                    className="p-3 space-y-2 overflow-y-auto relative"
-                    style={{
-                      maxHeight: 'calc(100vh - 280px)',
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#137FEC transparent'
-                    }}
-                  >
-                    <style dangerouslySetInnerHTML={{
-                      __html: `
-                        .overflow-y-auto::-webkit-scrollbar {
-                          width: 4px;
-                        }
-                        .overflow-y-auto::-webkit-scrollbar-track {
-                          background: transparent;
-                        }
-                        .overflow-y-auto::-webkit-scrollbar-thumb {
-                          background: #137FEC;
-                          border-radius: 10px;
-                        }
-                        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-                          background: #0f6ad4;
-                        }
-                      `
-                    }} />
-                    {/* Current Time Indicator */}
-                    {currentTimeInfo && currentTimeInfo.currentDayIndex === dayIndex && (
-                      <div
-                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                        style={{ top: `${currentTimeInfo.position}px` }}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 ml-1" />
-                        <div className="h-0.5 bg-red-500 flex-1 mr-3" />
-                        <span className="text-[10px] font-semibold text-red-500 bg-white dark:bg-slate-800 px-1 absolute right-0 -top-2">
-                          {currentTimeInfo.currentTime}
-                        </span>
-                      </div>
-                    )}
-
-                    {timeSlots.map((time) => {
-                      const groupsInSlot = getGroupsForSlot(dayIndex, time);
-
-                      return (
-                        <div key={time} className="relative min-h-[60px]">
-                          {/* Time Label */}
-                          <div className="text-xs text-slate-400 mb-1">{time}</div>
-
-                          {/* Groups */}
-                          {groupsInSlot.map((group) => {
-                            const groupIndex = groups.findIndex(g => g._id === group._id);
-                            const startMinutes = timeToMinutes(group.startTime);
-                            const endMinutes = timeToMinutes(group.endTime);
-                            const slotMinutes = timeToMinutes(time);
-
-                            // Only show at the hour where it starts
-                            const hourStart = Math.floor(startMinutes / 60) * 60;
-                            if (slotMinutes !== hourStart) return null;
-
-                            const duration = endMinutes - startMinutes;
-                            const hours = Math.floor(duration / 60);
-                            const mins = duration % 60;
-                            const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-
-                            return (
-                              <div
-                                key={group._id}
-                                className={`${getGroupColor(groupIndex)} text-white rounded-xl p-3 shadow-md mb-2`}
-                              >
-                                <h4 className="font-bold text-sm mb-1">{group.name}</h4>
-                                <div className="text-xs opacity-90">
-                                  <div>{group.startTime.slice(0, 5)} - {group.endTime.slice(0, 5)}</div>
-                                  <div>{durationText}</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Lunch Break */}
-                          {time === '12:00' && groupsInSlot.length === 0 && (
-                            <div className="text-center py-2 border-t border-slate-200 dark:border-slate-700">
-                              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Lunch</span>
-                            </div>
+                <div className="flex">
+                  {/* Left Color Bar */}
+                  <div className={`w-1.5 ${colors.bg}`} />
+                  
+                  {/* Content */}
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-slate-800 dark:text-white text-lg">
+                            {group.name}
+                          </h3>
+                          {active && (
+                            <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                              Now
+                            </span>
+                          )}
+                          {upcoming && (
+                            <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
+                              Soon
+                            </span>
+                          )}
+                          {ended && (
+                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                              Done
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
+                        
+                        {/* Time Display */}
+                        <div className="flex items-center gap-3">
+                          <div className={`flex items-center gap-1.5 ${colors.light} ${colors.text} px-3 py-1.5 rounded-lg`}>
+                            <span className="material-symbols-outlined text-sm">schedule</span>
+                            <span className="font-semibold text-sm">
+                              {group.startTime.slice(0, 5)}
+                            </span>
+                          </div>
+                          <span className="text-slate-400">→</span>
+                          <div className={`flex items-center gap-1.5 ${colors.light} ${colors.text} px-3 py-1.5 rounded-lg`}>
+                            <span className="font-semibold text-sm">
+                              {group.endTime.slice(0, 5)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Duration Badge */}
+                      <div className="flex flex-col items-end">
+                        <div className={`${colors.bg} text-white px-3 py-1 rounded-full`}>
+                          <span className="text-xs font-bold">{durationText}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress bar for active class */}
+                    {active && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
+                          <span>In progress</span>
+                          <span>
+                            {(() => {
+                              const now = new Date();
+                              const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                              const endMinutes = timeToMinutes(group.endTime);
+                              const remaining = endMinutes - currentMinutes;
+                              return `${remaining} min left`;
+                            })()}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-green-500 rounded-full transition-all"
+                            style={{
+                              width: `${(() => {
+                                const now = new Date();
+                                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                const startMinutes = timeToMinutes(group.startTime);
+                                const endMinutes = timeToMinutes(group.endTime);
+                                const total = endMinutes - startMinutes;
+                                const elapsed = currentMinutes - startMinutes;
+                                return Math.min(100, Math.max(0, (elapsed / total) * 100));
+                              })()}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
+
+          {/* Practice Lessons */}
+          {practicesForSelectedDay.map((practice) => {
+            const duration = timeToMinutes(practice.endTime) - timeToMinutes(practice.startTime);
+            const hours = Math.floor(duration / 60);
+            const mins = duration % 60;
+            const durationText = hours > 0 
+              ? mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+              : `${mins}m`;
+
+            const active = isPracticeActive(practice, selectedDayIndex);
+            const upcoming = isPracticeUpcoming(practice, selectedDayIndex);
+            const ended = isPracticeEnded(practice, selectedDayIndex);
+
+            return (
+              <div
+                key={practice._id}
+                className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border-2 border-dashed border-orange-300 dark:border-orange-700 ${
+                  active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
+                }`}
+              >
+                <div className="flex">
+                  <div className="w-1.5 bg-orange-500" />
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
+                            Practice
+                          </span>
+                          {active && (
+                            <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                              Now
+                            </span>
+                          )}
+                          {upcoming && (
+                            <span className="text-xs font-medium bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">
+                              Soon
+                            </span>
+                          )}
+                          {ended && (
+                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                              Done
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-1">
+                          {practice.groupName}
+                        </h3>
+                        {practice.description && (
+                          <p className="text-slate-500 text-sm mb-2">{practice.description}</p>
+                        )}
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-1.5 rounded-lg">
+                            <span className="material-symbols-outlined text-sm">schedule</span>
+                            <span className="font-semibold text-sm">
+                              {practice.startTime}
+                            </span>
+                          </div>
+                          <span className="text-slate-400">→</span>
+                          <div className="flex items-center gap-1.5 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-3 py-1.5 rounded-lg">
+                            <span className="font-semibold text-sm">
+                              {practice.endTime}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-orange-500 text-white px-3 py-1 rounded-full">
+                        <span className="text-xs font-bold">{durationText}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          </>
+        )}
+      </div>
+
+      {/* All Days Overview */}
+      <div className="px-4 mt-6">
+        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+          Week Overview
+        </h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {weekDays.map((day, index) => {
+              const classes = getClassesForDay(index);
+              const practices = getPracticeLessonsForDay(index);
+              const hasClasses = classes.length > 0 || practices.length > 0;
+              const today = isToday(index);
+              const selected = selectedDayIndex === index;
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDayIndex(index)}
+                  className={`py-2 rounded-lg transition-all ${
+                    selected
+                      ? 'bg-blue-500 text-white'
+                      : today
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : hasClasses
+                      ? 'bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  <span className="text-xs font-medium">{day.charAt(0)}</span>
+                  <div className={`text-lg font-bold ${!hasClasses && !selected ? 'opacity-50' : ''}`}>
+                    {classes.length + practices.length}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

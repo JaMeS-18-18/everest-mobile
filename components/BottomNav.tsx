@@ -14,6 +14,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
   // Define tabs with route paths
   const teacherTabs = [
     { label: 'Groups', icon: 'groups', path: '/groups' },
+    { label: 'Schedule', icon: 'calendar_month', path: '/teacher/schedule' },
     { label: 'Students', icon: 'school', path: '/students' },
     { label: 'Tasks', icon: 'assignment', path: '/tasks' },
     { label: 'Profile', icon: 'person', path: '/settings' },
@@ -46,6 +47,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     // For teacher's Tasks tab, active for both /tasks and /tasks/:taskId
     if (role === UserRole.TEACHER && tabPath === '/tasks') {
       return location.pathname === '/tasks' || /^\/tasks\/[\w-]+$/.test(location.pathname);
+    }
+    // For teacher's Schedule tab
+    if (role === UserRole.TEACHER && tabPath === '/teacher/schedule') {
+      return location.pathname === '/teacher/schedule';
     }
     // For student's ranking tab
     if (role === UserRole.STUDENT && tabPath === '/student/ranking') {
