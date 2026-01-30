@@ -21,6 +21,22 @@ interface UserProfile {
   phone?: string;
   studentInfo?: any;
   email?: string;
+  profileImage?: string;
+}
+
+interface SupportTeacher {
+  _id: string;
+  fullName: string;
+  username: string;
+  phone: string;
+  assignedGroups: string | string[];
+  groupNames: string[];
+  createdAt: string;
+}
+
+interface Group {
+  _id: string;
+  name: string;
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
@@ -39,6 +55,24 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Support Teacher states
+  const [showSupportTeacherModal, setShowSupportTeacherModal] = useState(false);
+  const [supportTeachers, setSupportTeachers] = useState<SupportTeacher[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [supportTeacherForm, setSupportTeacherForm] = useState({
+    fullName: '',
+    username: '',
+    password: '',
+    phone: '',
+    assignedGroups: 'all' as string | string[]
+  });
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [isAllGroups, setIsAllGroups] = useState(true);
+  const [isSavingST, setIsSavingST] = useState(false);
+  const [stError, setStError] = useState<string | null>(null);
+  const [editingST, setEditingST] = useState<SupportTeacher | null>(null);
+  const [showSTList, setShowSTList] = useState(false);
 
   // Restore dark mode from localStorage on mount
   useEffect(() => {
@@ -63,6 +97,30 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
     };
     fetchProfile();
   }, []);
+
+  // Fetch groups and support teachers for teacher role
+  useEffect(() => {
+    console.log('Current role:', role, 'UserRole.TEACHER:', UserRole.TEACHER);
+    if (role === UserRole.TEACHER || role === 'teacher' || String(role).toLowerCase() === 'teacher') {
+      const fetchData = async () => {
+        try {
+          const [groupsRes, stRes] = await Promise.all([
+            api.get('/groups'),
+            api.get('/support-teachers')
+          ]);
+          if (groupsRes.data.success) {
+            setGroups(groupsRes.data.data || []);
+          }
+          if (stRes.data.success) {
+            setSupportTeachers(stRes.data.data || []);
+          }
+        } catch (err) {
+          console.error('Failed to fetch data:', err);
+        }
+      };
+      fetchData();
+    }
+  }, [role]);
 
   // Save dark mode to localStorage whenever it changes
   useEffect(() => {
@@ -90,6 +148,110 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
     } finally {
       setIsChanging(false);
     }
+  };
+
+  // Support Teacher handlers
+  const openCreateSTModal = () => {
+    setEditingST(null);
+    setSupportTeacherForm({
+      fullName: '',
+      username: '',
+      password: '',
+      phone: '',
+      assignedGroups: 'all'
+    });
+    setSelectedGroups([]);
+    setIsAllGroups(true);
+    setStError(null);
+    setShowSupportTeacherModal(true);
+  };
+
+  const openEditSTModal = (st: SupportTeacher) => {
+    setEditingST(st);
+    setSupportTeacherForm({
+      fullName: st.fullName,
+      username: st.username,
+      password: '',
+      phone: st.phone || '',
+      assignedGroups: st.assignedGroups
+    });
+    if (st.assignedGroups === 'all') {
+      setIsAllGroups(true);
+      setSelectedGroups([]);
+    } else {
+      setIsAllGroups(false);
+      setSelectedGroups(st.assignedGroups as string[]);
+    }
+    setStError(null);
+    setShowSupportTeacherModal(true);
+  };
+
+  const handleSaveST = async () => {
+    if (!supportTeacherForm.fullName || !supportTeacherForm.username) {
+      setStError('F.I.O va login majburiy');
+      return;
+    }
+    if (!editingST && !supportTeacherForm.password) {
+      setStError('Parol majburiy');
+      return;
+    }
+
+    setIsSavingST(true);
+    setStError(null);
+
+    try {
+      const payload = {
+        fullName: supportTeacherForm.fullName,
+        username: supportTeacherForm.username,
+        phone: supportTeacherForm.phone,
+        assignedGroups: isAllGroups ? 'all' : selectedGroups,
+        ...(supportTeacherForm.password && { password: supportTeacherForm.password })
+      };
+
+      let response;
+      if (editingST) {
+        response = await api.put(`/support-teachers/${editingST._id}`, payload);
+      } else {
+        response = await api.post('/support-teachers', payload);
+      }
+
+      if (response.data.success) {
+        if (editingST) {
+          setSupportTeachers(prev => prev.map(st => 
+            st._id === editingST._id ? response.data.data : st
+          ));
+        } else {
+          setSupportTeachers(prev => [...prev, response.data.data]);
+        }
+        setShowSupportTeacherModal(false);
+      } else {
+        setStError(response.data.message || 'Xatolik yuz berdi');
+      }
+    } catch (err: any) {
+      setStError(err?.response?.data?.message || 'Xatolik yuz berdi');
+    } finally {
+      setIsSavingST(false);
+    }
+  };
+
+  const handleDeleteST = async (id: string) => {
+    if (!confirm('Haqiqatan ham o\'chirmoqchimisiz?')) return;
+    try {
+      const response = await api.delete(`/support-teachers/${id}`);
+      if (response.data.success) {
+        setSupportTeachers(prev => prev.filter(st => st._id !== id));
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
+
+  const toggleGroupSelection = (groupId: string) => {
+    setSelectedGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,6 +393,58 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
           </div>
         </section>
 
+        {/* Support Teachers Section - Only for Teachers */}
+        {(role === UserRole.TEACHER || role === 'teacher' || String(role).toLowerCase() === 'teacher') && (
+          <section>
+            <div className="flex items-center justify-between px-2 pb-2">
+              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Yordamchi O'qituvchilar</h4>
+              <button 
+                onClick={openCreateSTModal}
+                className="text-primary text-sm font-medium flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Qo'shish
+              </button>
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              {supportTeachers.length === 0 ? (
+                <div className="px-4 py-6 text-center text-slate-400">
+                  <span className="material-symbols-outlined text-4xl mb-2">person_add</span>
+                  <p className="text-sm">Yordamchi o'qituvchi yo'q</p>
+                </div>
+              ) : (
+                supportTeachers.map((st) => (
+                  <div key={st._id} className="flex items-center gap-4 px-4 py-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {st.fullName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{st.fullName}</p>
+                      <p className="text-xs text-slate-500 truncate">
+                        @{st.username} • {st.groupNames.join(', ')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => openEditSTModal(st)}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteST(st._id)}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        )}
+
         <section>
           <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Support</h4>
           <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
@@ -348,6 +562,138 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
             <div className="flex gap-2 mt-2 w-full">
               <button className="flex-1 px-4 py-2 rounded-full bg-primary text-white font-bold shadow hover:bg-primary-dark transition disabled:opacity-50" onClick={handleUploadImage} disabled={uploadingImage}>{uploadingImage ? 'Uploading...' : 'Upload'}</button>
               <button className="flex-1 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold shadow hover:bg-slate-300 dark:hover:bg-slate-700 transition" onClick={() => { setShowImageModal(false); setImagePreview(null); setImageError(null); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Support Teacher Modal */}
+      {showSupportTeacherModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">
+              {editingST ? "Yordamchi O'qituvchini Tahrirlash" : "Yangi Yordamchi O'qituvchi"}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">F.I.O *</label>
+                <input
+                  type="text"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  value={supportTeacherForm.fullName}
+                  onChange={e => setSupportTeacherForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  placeholder="To'liq ismi"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Login *</label>
+                <input
+                  type="text"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  value={supportTeacherForm.username}
+                  onChange={e => setSupportTeacherForm(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Foydalanuvchi nomi"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  Parol {editingST ? '(bo\'sh qoldiring o\'zgarmas)' : '*'}
+                </label>
+                <input
+                  type="password"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  value={supportTeacherForm.password}
+                  onChange={e => setSupportTeacherForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder={editingST ? "Yangi parol (ixtiyoriy)" : "Parol"}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Telefon</label>
+                <input
+                  type="tel"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  value={supportTeacherForm.phone}
+                  onChange={e => setSupportTeacherForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+998 XX XXX XX XX"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Guruhlar</label>
+                
+                {/* All Groups Toggle */}
+                <div 
+                  onClick={() => {
+                    setIsAllGroups(!isAllGroups);
+                    if (!isAllGroups) setSelectedGroups([]);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer mb-2 transition-colors ${
+                    isAllGroups 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    isAllGroups ? 'border-primary bg-primary' : 'border-slate-300'
+                  }`}>
+                    {isAllGroups && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
+                  </div>
+                  <span className="font-medium">Barcha Guruhlar</span>
+                </div>
+
+                {/* Individual Groups */}
+                {!isAllGroups && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {groups.map(group => (
+                      <div 
+                        key={group._id}
+                        onClick={() => toggleGroupSelection(group._id)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                          selectedGroups.includes(group._id)
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          selectedGroups.includes(group._id) ? 'border-primary bg-primary' : 'border-slate-300'
+                        }`}>
+                          {selectedGroups.includes(group._id) && (
+                            <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                          )}
+                        </div>
+                        <span className="font-medium">{group.name}</span>
+                      </div>
+                    ))}
+                    {groups.length === 0 && (
+                      <p className="text-sm text-slate-400 text-center py-2">Guruhlar yo'q</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {stError && <p className="text-red-500 text-sm mt-3">{stError}</p>}
+
+            <div className="flex gap-2 mt-6">
+              <button
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+                onClick={() => setShowSupportTeacherModal(false)}
+                disabled={isSavingST}
+              >
+                Bekor qilish
+              </button>
+              <button
+                className="flex-1 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={handleSaveST}
+                disabled={isSavingST || !supportTeacherForm.fullName || !supportTeacherForm.username || (!editingST && !supportTeacherForm.password)}
+              >
+                {isSavingST && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
+                {editingST ? 'Saqlash' : 'Yaratish'}
+              </button>
             </div>
           </div>
         </div>

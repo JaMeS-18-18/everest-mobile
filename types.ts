@@ -5,7 +5,8 @@ export enum UserRole {
   STUDENT = 'Student',
   ADMIN = 'Admin',
   SUPERADMIN = 'superadmin',
-  PARENT = 'parent'
+  PARENT = 'parent',
+  SUPPORT_TEACHER = 'supportTeacher'
 }
 
 export type View = 

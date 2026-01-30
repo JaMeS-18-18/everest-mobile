@@ -19,6 +19,12 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     { label: 'Tasks', icon: 'assignment', path: '/tasks' },
     { label: 'Profile', icon: 'person', path: '/settings' },
   ];
+  const supportTeacherTabs = [
+    { label: 'Groups', icon: 'groups', path: '/support/groups' },
+    { label: 'Schedule', icon: 'calendar_month', path: '/support/schedule' },
+    { label: 'Appointments', icon: 'event_available', path: '/support/appointments' },
+    { label: 'Profile', icon: 'person', path: '/support/settings' },
+  ];
   const studentTabs = [
     { label: 'Home', icon: 'home', path: '/student/home' },
     { label: 'Schedule', icon: 'calendar_month', path: '/student/schedule' },
@@ -32,6 +38,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
 
   let tabs = studentTabs;
   if (role === UserRole.TEACHER) tabs = teacherTabs;
+  if (role === UserRole.SUPPORT_TEACHER) tabs = supportTeacherTabs;
   if (role === UserRole.ADMIN) tabs = adminTabs;
 
   // Helper to check if tab should be highlighted
@@ -51,6 +58,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     // For teacher's Schedule tab
     if (role === UserRole.TEACHER && tabPath === '/teacher/schedule') {
       return location.pathname === '/teacher/schedule';
+    }
+    // For support teacher's tabs
+    if (role === UserRole.SUPPORT_TEACHER && tabPath === '/support/groups') {
+      return location.pathname.startsWith('/support/groups');
+    }
+    if (role === UserRole.SUPPORT_TEACHER && tabPath === '/support/schedule') {
+      return location.pathname === '/support/schedule';
+    }
+    if (role === UserRole.SUPPORT_TEACHER && tabPath === '/support/appointments') {
+      return location.pathname === '/support/appointments';
     }
     // For student's ranking tab
     if (role === UserRole.STUDENT && tabPath === '/student/ranking') {

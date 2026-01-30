@@ -107,12 +107,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         localStorage.setItem('user', JSON.stringify(data.user));
       }
 
-      // Use role from response (support admin, teacher, student, parent)
+      // Use role from response (support admin, teacher, student, parent, supportTeacher)
       let userRole: UserRole = UserRole.STUDENT;
       if (data.user?.role === 'admin' || data.user?.role === 'Admin') userRole = UserRole.ADMIN;
       else if (data.user?.role === 'teacher' || data.user?.role === 'Teacher') userRole = UserRole.TEACHER;
       else if (data.user?.role === 'superadmin' || data.user?.role === 'SUPERADMIN' || data.user?.role === 'Superadmin') userRole = UserRole.SUPERADMIN;
       else if (data.user?.role === 'parent' || data.user?.role === 'Parent') userRole = UserRole.PARENT;
+      else if (data.user?.role === 'supportTeacher') userRole = UserRole.SUPPORT_TEACHER;
       onLogin(userRole);
       setFailCount(0);
       setBlockedUntil(null);

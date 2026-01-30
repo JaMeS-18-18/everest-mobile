@@ -283,6 +283,23 @@ const StudentHomeView: React.FC = () => {
           </div>
         </div>
 
+        {/* Book Appointment Button */}
+        <button
+          onClick={() => navigate('/student/appointment')}
+          className="w-full mb-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-between shadow-lg"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-white">event_available</span>
+            </div>
+            <div className="text-left">
+              <p className="text-white font-bold">Book Appointment</p>
+              <p className="text-white/70 text-xs">With Support Teacher</p>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-white">arrow_forward_ios</span>
+        </button>
+
         {/* Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
           {[

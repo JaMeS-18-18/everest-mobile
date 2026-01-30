@@ -30,6 +30,10 @@ import SuperadminDashboardView from './views/SuperadminDashboardView';
 import ParentHomeView from './views/ParentHomeView';
 import ParentChildDetailView from './views/ParentChildDetailView';
 import ParentBottomNav from './components/ParentBottomNav';
+import SupportTeacherGroupsView from './views/SupportTeacherGroupsView';
+import SupportTeacherScheduleView from './views/SupportTeacherScheduleView';
+import StudentAppointmentView from './views/StudentAppointmentView';
+import SupportTeacherAppointmentsView from './views/SupportTeacherAppointmentsView';
 
 const App: React.FC = () => {
   // Example: dark mode state (can be expanded as needed)
@@ -50,6 +54,7 @@ const App: React.FC = () => {
         else if (user.role === 'admin' || user.role === 'Admin') return UserRole.ADMIN;
         else if (user.role === 'teacher' || user.role === 'Teacher') return UserRole.TEACHER;
         else if (user.role === 'parent' || user.role === 'Parent') return UserRole.PARENT;
+        else if (user.role === 'supportTeacher') return UserRole.SUPPORT_TEACHER;
         else return UserRole.STUDENT;
       } catch { }
     }
@@ -78,6 +83,8 @@ const App: React.FC = () => {
       navigate('/admin/teachers', { replace: true });
     } else if (role === UserRole.PARENT) {
       navigate('/parent/home', { replace: true });
+    } else if (role === UserRole.SUPPORT_TEACHER) {
+      navigate('/support/groups', { replace: true }); // Support teacher goes to their groups view
     } else {
       navigate('/student/home', { replace: true });
     }
@@ -118,7 +125,7 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<DashboardView />} />
               <Route path="/superadmin/dashboard" element={<SuperadminDashboardView />} />
               <Route path="/superadmin/admins" element={<SuperadminAdminsView />} />
-              <Route path="/superadmin/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              <Route path="/superadmin/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               <Route path="/admin/teachers" element={<AdminTeachersView />} />
               <Route path="/groups" element={<GroupsView />} />
               <Route path="/groups/:groupId" element={<GroupDetailView />} />
@@ -130,17 +137,23 @@ const App: React.FC = () => {
               <Route path="/tasks/:taskId" element={<TaskDetailView />} />
               <Route path="/teacher/schedule" element={<TeacherScheduleView />} />
               <Route path="/notifications" element={<NotificationsView />} />
-              <Route path="/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              <Route path="/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               <Route path="/grading" element={<GradingView />} />
               <Route path="/student/home" element={<StudentHomeView />} />
               <Route path="/student/schedule" element={<StudentScheduleView />} />
               <Route path="/student/ranking" element={<StudentRankingView />} />
+              <Route path="/student/appointment" element={<StudentAppointmentView />} />
               <Route path="/student/homework/:homeworkId" element={<StudentHomeworkDetailView />} />
               <Route path="/student/submit-homework/:homeworkId" element={<SubmitHomeworkView />} />
               {/* Parent routes */}
               <Route path="/parent/home" element={<ParentHomeView />} />
               <Route path="/parent/child/:studentId" element={<ParentChildDetailView />} />
-              <Route path="/parent/settings" element={<SettingsView isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              <Route path="/parent/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              {/* Support Teacher routes */}
+              <Route path="/support/groups" element={<SupportTeacherGroupsView />} />
+              <Route path="/support/schedule" element={<SupportTeacherScheduleView />} />
+              <Route path="/support/appointments" element={<SupportTeacherAppointmentsView />} />
+              <Route path="/support/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               {/* Catch-all route for unknown paths */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
@@ -154,7 +167,10 @@ const App: React.FC = () => {
       {isLoggedIn && role === UserRole.PARENT && location.pathname.startsWith('/parent') && (
         <ParentBottomNav />
       )}
-      {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+      {isLoggedIn && role === UserRole.SUPPORT_TEACHER && location.pathname.startsWith('/support') && (
+        <BottomNav role={role} />
+      )}
+      {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && role !== UserRole.SUPPORT_TEACHER && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
     </div>
