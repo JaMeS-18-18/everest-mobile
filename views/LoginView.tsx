@@ -8,6 +8,16 @@ interface LoginViewProps {
   onLogin: (role: UserRole) => void;
 }
 
+// Check if current domain is Everest/Pluto specific
+const isEverestDomain = () => {
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname.includes('pluto-homework') || 
+         hostname.includes('everest-homework') ||
+         hostname.includes('everest') ||
+         hostname.includes('pluto') ||
+         hostname === 'localshost'; // localhost ham Everest dizayn
+};
+
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -142,7 +152,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     }
   };
 
-  return (
+  // Everest/Pluto dizayni
+  const renderEverestLogin = () => (
     <div className="min-h-screen flex flex-col justify-center items-center bg-background-light dark:bg-background-dark overflow-y-hidden transition-colors duration-300">
       <div className="flex flex-col items-center w-full px-4">
         <div className="flex flex-col items-center w-full max-w-md mx-auto">
@@ -288,6 +299,172 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       </div>
     </div>
   );
+
+  // Umumiy (Generic) dizayn - homework-exchange uchun - Premium White Design
+  const renderGenericLogin = () => (
+    <div className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 overflow-hidden transition-colors duration-300 relative">
+      {/* Decorative Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-2xl"></div>
+      </div>
+
+      <div className="flex flex-col items-center w-full px-4 relative z-10">
+        <div className="flex flex-col items-center w-full max-w-md mx-auto">
+          {/* Premium Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, type: 'spring', bounce: 0.4 }}
+            className="mb-8 relative"
+          >
+            <div className="w-20 h-20 bg-gradient-to-br from-primary via-primary to-primary-dark rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+              <span className="material-symbols-outlined text-4xl text-white">school</span>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-4 border-white dark:border-slate-900 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[12px] text-white">check</span>
+            </div>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="text-3xl font-extrabold text-center mb-2 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-white dark:via-slate-200 dark:to-white bg-clip-text text-transparent"
+          >
+            Homework Exchange
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="text-sm text-center mb-8 text-slate-500 dark:text-slate-400 font-medium"
+          >
+             Education Management Platform
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="w-full"
+          >
+            <form
+              className="w-full space-y-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-slate-200/50 dark:shadow-black/20"
+              onSubmit={handleSubmit}
+            >
+              {/* Welcome Text */}
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Welcome Back</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Sign in to continue to your dashboard</p>
+              </div>
+
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 text-red-600 dark:text-red-400 text-sm flex items-center gap-3"
+                >
+                  <span className="material-symbols-outlined text-[20px]">error</span>
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Username</label>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors duration-200">
+                    <span className="material-symbols-outlined text-[20px]">person</span>
+                  </div>
+                  <input
+                    className="w-full h-13 pl-12 pr-4 rounded-2xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-700/50 text-slate-800 dark:text-white text-base font-medium focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 placeholder-slate-400 dark:placeholder-slate-500"
+                    placeholder="Enter your username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Password</label>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors duration-200">
+                    <span className="material-symbols-outlined text-[20px]">lock</span>
+                  </div>
+                  <input
+                    className="w-full h-13 pl-12 pr-12 rounded-2xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-700/50 text-slate-800 dark:text-white text-base font-medium focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 placeholder-slate-400 dark:placeholder-slate-500"
+                    placeholder="Enter your password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors duration-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || (blockedUntil !== null && Date.now() < blockedUntil)}
+                className="w-full py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white text-base font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-6"
+              >
+                {isLoading ? (
+                  <>
+                    <motion.span
+                      initial={{ rotate: 0 }}
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                      style={{ display: 'inline-block' }}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="4" opacity="0.3" />
+                        <path d="M22 12a10 10 0 0 1-10 10" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+                      </svg>
+                    </motion.span>
+                    <span>Signing in...</span>
+                  </>
+                ) : blockedUntil && secondsLeft > 0 ? (
+                  <span>Try again in {secondsLeft}s</span>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+
+          {/* Footer */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-8 text-center"
+          >
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              © 2026 <span className="text-primary font-semibold">Homework Exchange</span>
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">All rights reserved</p>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Domen nomiga qarab dizayn tanlash
+  return isEverestDomain() ? renderEverestLogin() : renderGenericLogin();
 };
 
 export default LoginView;

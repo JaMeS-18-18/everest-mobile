@@ -397,20 +397,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         {(role === UserRole.TEACHER || role === 'teacher' || String(role).toLowerCase() === 'teacher') && (
           <section>
             <div className="flex items-center justify-between px-2 pb-2">
-              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Yordamchi O'qituvchilar</h4>
+              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Support Teachers</h4>
               <button 
                 onClick={openCreateSTModal}
                 className="text-primary text-sm font-medium flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
-                Qo'shish
+                Add
               </button>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
               {supportTeachers.length === 0 ? (
                 <div className="px-4 py-6 text-center text-slate-400">
                   <span className="material-symbols-outlined text-4xl mb-2">person_add</span>
-                  <p className="text-sm">Yordamchi o'qituvchi yo'q</p>
+                  <p className="text-sm">No support teachers</p>
                 </div>
               ) : (
                 supportTeachers.map((st) => (
@@ -572,18 +572,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold mb-4">
-              {editingST ? "Yordamchi O'qituvchini Tahrirlash" : "Yangi Yordamchi O'qituvchi"}
+              {editingST ? "Edit Support Teacher" : "New Support Teacher"}
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">F.I.O *</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Full Name *</label>
                 <input
                   type="text"
                   className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
                   value={supportTeacherForm.fullName}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  placeholder="To'liq ismi"
+                  placeholder="Enter full name"
                 />
               </div>
 
@@ -594,25 +594,25 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                   className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
                   value={supportTeacherForm.username}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="Foydalanuvchi nomi"
+                  placeholder="Enter username"
                 />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Parol {editingST ? '(bo\'sh qoldiring o\'zgarmas)' : '*'}
+                  Password {editingST ? '(leave blank to keep unchanged)' : '*'}
                 </label>
                 <input
                   type="password"
                   className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
                   value={supportTeacherForm.password}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder={editingST ? "Yangi parol (ixtiyoriy)" : "Parol"}
+                  placeholder={editingST ? "New password (optional)" : "Password"}
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Telefon</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Phone</label>
                 <input
                   type="tel"
                   className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
@@ -623,7 +623,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Guruhlar</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Groups</label>
                 
                 {/* All Groups Toggle */}
                 <div 
@@ -642,7 +642,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                   }`}>
                     {isAllGroups && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
                   </div>
-                  <span className="font-medium">Barcha Guruhlar</span>
+                  <span className="font-medium">All Groups</span>
                 </div>
 
                 {/* Individual Groups */}
@@ -669,7 +669,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                       </div>
                     ))}
                     {groups.length === 0 && (
-                      <p className="text-sm text-slate-400 text-center py-2">Guruhlar yo'q</p>
+                      <p className="text-sm text-slate-400 text-center py-2">No groups available</p>
                     )}
                   </div>
                 )}
@@ -684,7 +684,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 onClick={() => setShowSupportTeacherModal(false)}
                 disabled={isSavingST}
               >
-                Bekor qilish
+                Cancel
               </button>
               <button
                 className="flex-1 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
@@ -692,7 +692,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 disabled={isSavingST || !supportTeacherForm.fullName || !supportTeacherForm.username || (!editingST && !supportTeacherForm.password)}
               >
                 {isSavingST && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
-                {editingST ? 'Saqlash' : 'Yaratish'}
+                {editingST ? 'Save' : 'Create'}
               </button>
             </div>
           </div>

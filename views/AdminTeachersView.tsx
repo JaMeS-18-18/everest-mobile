@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 
 interface Teacher {
   _id: string;
@@ -13,421 +13,702 @@ interface Teacher {
   avatar?: string;
 }
 
-const subjectColors: Record<string, string> = {
-  Mathematics: 'bg-blue-100 text-blue-700',
-  Science: 'bg-green-100 text-green-700',
-  'Art & Design': 'bg-purple-100 text-purple-700',
-  History: 'bg-orange-100 text-orange-700',
-  'Physical Ed.': 'bg-red-100 text-red-700',
-};
-
 const AdminTeachersView: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  // Create modal
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ fullName: '', username: '', password: '', phone: '', subject: '' });
-  const [showMenuId, setShowMenuId] = useState<string | null>(null);
-  const [showEdit, setShowEdit] = useState<{ open: boolean, teacher?: Teacher }>({ open: false });
-  const [showDelete, setShowDelete] = useState<{ open: boolean, teacher?: Teacher }>({ open: false });
-  const [editForm, setEditForm] = useState({ fullName: '', username: '', phone: '', subject: '', password: '' });
-  const [editLoading, setEditLoading] = useState(false);
-  const [showEditPassword, setShowEditPassword] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Edit modal
+  const [showEdit, setShowEdit] = useState<{ open: boolean; teacher?: Teacher }>({ open: false });
+  const [editForm, setEditForm] = useState({ fullName: '', username: '', phone: '', subject: '', password: '' });
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Delete modal
+  const [showDelete, setShowDelete] = useState<{ open: boolean; teacher?: Teacher }>({ open: false });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Menu
+  const [showMenuId, setShowMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTeachers();
   }, []);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setShowMenuId(null);
+    if (showMenuId) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [showMenuId]);
+
   const fetchTeachers = async () => {
-    const res = await api.get('/users?role=teacher');
-    setTeachers(res.data.data || []);
+    setLoading(true);
+    try {
+      const res = await api.get('/users?role=teacher');
+      setTeachers(res.data.data || []);
+    } catch (err) {
+      toast.error('Failed to load teachers');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filtered = teachers.filter(t =>
     t.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    (t.subject || '').toLowerCase().includes(search.toLowerCase())
+    (t.subject || '').toLowerCase().includes(search.toLowerCase()) ||
+    t.username.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = async (e: any) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!form.fullName.trim() || !form.username.trim() || !form.password.trim()) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    if (form.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
     setCreating(true);
-    setError(null);
     try {
-      // Explicitly send subject and email
-      const payload = { ...form, role: 'teacher', subject: form.subject };
-      const res = await api.post('/users', payload);
+      await api.post('/users', { ...form, role: 'teacher' });
+      toast.success('Teacher created successfully');
       setShowCreate(false);
-      setForm({ fullName: '', username: '', password: '', phone: '', subject: '', email: '' });
+      setForm({ fullName: '', username: '', password: '', phone: '', subject: '' });
+      setShowPassword(false);
       fetchTeachers();
-      toast.success(res.data?.message || 'Teacher created successfully');
-    } catch (e: any) {
-      // Try to show backend error message if available
-      const msg = e?.response?.data?.message || e.message || 'Failed to create teacher';
-      setError(msg);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to create teacher';
       toast.error(msg);
     } finally {
       setCreating(false);
     }
   };
 
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEdit.teacher) return;
+
+    setEditLoading(true);
+    try {
+      const payload: any = {
+        fullName: editForm.fullName,
+        username: editForm.username,
+        phone: editForm.phone,
+        subject: editForm.subject,
+      };
+      if (editForm.password && editForm.password.length >= 8) {
+        payload.password = editForm.password;
+      }
+      await api.put(`/users/${showEdit.teacher._id}`, payload);
+      toast.success('Teacher updated successfully');
+      setShowEdit({ open: false });
+      setShowEditPassword(false);
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update teacher');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!showDelete.teacher) return;
+
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/users/${showDelete.teacher._id}`);
+      toast.success('Teacher deleted successfully');
+      setShowDelete({ open: false });
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete teacher');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const openEditModal = (teacher: Teacher) => {
+    setEditForm({
+      fullName: teacher.fullName,
+      username: teacher.username,
+      phone: teacher.phone,
+      subject: teacher.subject || '',
+      password: '',
+    });
+    setShowEdit({ open: true, teacher });
+    setShowMenuId(null);
+  };
+
+  const getOrgName = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.organization?.name || null;
+      }
+    } catch {}
+    return null;
+  };
+
+  const avatarColors = [
+    'from-blue-500 to-indigo-600',
+    'from-purple-500 to-pink-600',
+    'from-green-500 to-teal-600',
+    'from-orange-500 to-red-600',
+    'from-cyan-500 to-blue-600',
+  ];
+
   return (
-    <div className="p-4 max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark transition-colors duration-300">
-      <ToastContainer position="top-center" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover aria-label={undefined} />
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary-light dark:text-text-primary-dark transition-colors">Teacher Management</h1>
-          <div className="flex items-center gap-2 mt-1 text-slate-500 dark:text-slate-300 text-sm transition-colors">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
-              <span className="font-semibold">{teachers.length} Active Teachers</span>
-            </span>
-            {/* Organization name badge */}
-            {(() => {
-              try {
-                const userStr = localStorage.getItem('user');
-                if (userStr) {
-                  const user = JSON.parse(userStr);
-                  if (user.organization && user.organization.name) {
-                    return (
-                      <span className="ml-2 px-3 py-1 rounded bg-blue-100 text-blue-700 font-semibold text-xs">{user.organization.name}</span>
-                    );
-                  }
-                }
-              } catch {}
-              return null;
-            })()}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="relative">
-            <span className="material-symbols-outlined text-2xl">notifications</span>
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
-            <span className="material-symbols-outlined text-2xl">account_circle</span>
-          </div>
-        </div>
-      </div>
-      <div className="mb-4">
-        <input
-          className="w-full p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition placeholder-slate-400 dark:placeholder-slate-500"
-          placeholder="Search by name or subject..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-      <div className="space-y-3">
-        {filtered.map(t => (
-          <div key={t._id} className="flex items-center bg-white dark:bg-card-dark rounded-2xl shadow-sm px-4 py-3 hover:shadow-md transition group relative">
-            {t.avatar ? (
-              <img src={t.avatar} alt="" className="w-12 h-12 rounded-full object-cover mr-3" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-lg font-bold mr-3 text-text-primary-light dark:text-text-primary-dark">
-                {t.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-[17px] group-hover:text-primary transition-colors text-text-primary-light dark:text-text-primary-dark flex items-center gap-2">
-                {t.fullName}
-                {t.subject && (
-                  <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${subjectColors[t.subject] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>{t.subject}</span>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark transition-colors">
+      {/* Header */}
+      <div className="bg-card-light dark:bg-card-dark shadow-sm sticky top-0 z-40">
+        <div className="max-w-lg mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                Teachers
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  {teachers.length} Active Teachers
+                </span>
+                {getOrgName() && (
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                    {getOrgName()}
+                  </span>
                 )}
               </div>
-              <span className="text-xs text-slate-400 dark:text-slate-300 block truncate">{t.username}</span>
             </div>
-            <button className="ml-2 text-slate-400 dark:text-slate-300 hover:text-primary transition relative" onClick={() => setShowMenuId(t._id === showMenuId ? null : t._id)}>
-              <span className="material-symbols-outlined">more_vert</span>
-              {showMenuId === t._id && (
-                <div className="absolute right-0 top-8 bg-white dark:bg-card-dark border dark:border-border-dark rounded-xl shadow-lg z-50 min-w-[120px]">
-                  <button
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                    onClick={() => {
-                      setShowEdit({ open: true, teacher: t });
-                      setEditForm({
-                        fullName: t.fullName,
-                        username: t.username,
-                        phone: t.phone,
-                        subject: t.subject || '',
-                        password: t.password || '',
-                      });
-                      setShowMenuId(null);
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[18px] mr-2 align-middle">edit</span>
-                    Edit
-                  </button>
-                  <button
-                    className="w-full px-4 py-2 text-left hover:bg-red-50 dark:hover:bg-red-900 text-red-600 dark:text-red-300"
-                    onClick={() => {
-                      setShowDelete({ open: true, teacher: t });
-                      setShowMenuId(null);
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[18px] mr-2 align-middle">delete</span>
-                    Delete
-                  </button>
-                </div>
-              )}
+            <button 
+              onClick={() => fetchTeachers()}
+              className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center"
+            >
+              <span className="material-symbols-outlined">refresh</span>
             </button>
           </div>
-        ))}
-              {/* Edit Teacher Modal */}
-              {showEdit.open && showEdit.teacher && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                  <form
-                    onSubmit={async e => {
-                      e.preventDefault();
-                      setEditLoading(true);
-                      setError(null);
-                      try {
-                        await api.put(`/users/${showEdit.teacher!._id}`, editForm);
-                        setShowEdit({ open: false });
-                        fetchTeachers();
-                      } catch (e: any) {
-                        setError(e.message || 'Failed to update teacher');
-                      } finally {
-                        setEditLoading(false);
-                      }
-                    }}
-                    className="bg-white dark:bg-card-dark w-full max-w-md rounded-2xl shadow-xl flex flex-col gap-0 overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2 px-6 pt-6 pb-2 border-b dark:border-border-dark">
-                      <button type="button" onClick={() => setShowEdit({ open: false })} className="mr-2 text-slate-500 hover:text-primary">
-                        <span className="material-symbols-outlined text-2xl">arrow_back</span>
-                      </button>
-                      <h2 className="font-extrabold text-xl">Edit Teacher</h2>
-                    </div>
-                    <div className="px-6 py-2 overflow-y-auto">
-                      <label className="block text-sm font-semibold mb-1 mt-2 text-text-primary-light dark:text-text-primary-dark">Full Name</label>
-                      <input
-                        className="w-full mb-2 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                        value={editForm.fullName}
-                        onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))}
-                        required
-                      />
-                      <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Phone</label>
-                      <input
-                        className="w-full mb-2 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                        value={editForm.phone}
-                        onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                        required
-                      />
-                      <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Username</label>
-                      <input
-                        className="w-full mb-2 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                        value={editForm.username}
-                        onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
-                        required
-                      />
-                      <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Password</label>
-                      <div className="relative mb-2">
-                        <input
-                          className="w-full p-3 pr-12 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                          type={showEditPassword ? 'text' : 'password'}
-                          minLength={8}
-                          value={editForm.password}
-                          onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
-                          required
-                        />
-                        <span
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer select-none"
-                          onClick={() => setShowEditPassword(v => !v)}
-                          title={showEditPassword ? 'Hide password' : 'Show password'}
-                        >
-                          <span className="material-symbols-outlined">
-                            {showEditPassword ? 'visibility_off' : 'visibility'}
-                          </span>
-                        </span>
-                      </div>
-                      <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Subject</label>
-                      <input
-                        className="w-full mb-2 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                        value={editForm.subject}
-                        onChange={e => setEditForm(f => ({ ...f, subject: e.target.value }))}
-                      />
-                      {error && <div className="text-red-500 dark:text-red-300 text-sm mb-2">{error}</div>}
-                    </div>
-                    <div className="px-6 pb-6 pt-2">
-                      <button
-                        type="submit"
-                        className="w-full py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 text-lg shadow-lg hover:bg-primary/90 transition"
-                        disabled={editLoading}
-                      >
-                        Save Changes
-                        <span className="material-symbols-outlined ml-1">check</span>
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
+        </div>
+      </div>
 
-              {/* Delete Teacher Modal */}
-              {showDelete.open && showDelete.teacher && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                  <div className="bg-white dark:bg-card-dark w-full max-w-sm rounded-2xl shadow-xl flex flex-col gap-0 overflow-hidden">
-                    <div className="flex items-center gap-2 px-6 pt-6 pb-2 border-b dark:border-border-dark">
-                      <button type="button" onClick={() => setShowDelete({ open: false })} className="mr-2 text-slate-500 hover:text-primary">
-                        <span className="material-symbols-outlined text-2xl">arrow_back</span>
-                      </button>
-                      <h2 className="font-extrabold text-xl">Delete Teacher</h2>
-                    </div>
-                    <div className="px-6 py-6 text-center">
-                      <span className="material-symbols-outlined text-red-500 text-5xl mb-2">delete</span>
-                      <div className="font-bold text-lg mb-2 text-text-primary-light dark:text-text-primary-dark">Are you sure you want to delete this teacher?</div>
-                      <div className="text-slate-500 dark:text-slate-300 mb-4">{showDelete.teacher.fullName}</div>
-                      {error && <div className="text-red-500 dark:text-red-300 text-sm mb-2">{error}</div>}
-                      <div className="flex gap-2 justify-center">
+      <div className="max-w-lg mx-auto px-4 pb-24">
+        {/* Search */}
+        <div className="mt-4 relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+            <span className="material-symbols-outlined">search</span>
+          </span>
+          <input
+            type="text"
+            placeholder="Search teachers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          />
+        </div>
+
+        {/* Teachers List */}
+        <div className="mt-4 space-y-3">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+              <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">Loading...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-16"
+            >
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-4xl text-slate-400">person_off</span>
+              </div>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark">
+                {search ? 'No teachers found' : 'No teachers yet'}
+              </p>
+            </motion.div>
+          ) : (
+            <AnimatePresence>
+              {filtered.map((teacher, idx) => {
+                const initials = teacher.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                const colorClass = avatarColors[idx % avatarColors.length];
+                
+                return (
+                  <motion.div
+                    key={teacher._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-border-light dark:border-border-dark"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      {teacher.avatar ? (
+                        <img src={teacher.avatar} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                      ) : (
+                        <div className={`w-12 h-12 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
+                          {initials}
+                        </div>
+                      )}
+                      
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-text-primary-light dark:text-text-primary-dark truncate">
+                            {teacher.fullName}
+                          </h3>
+                          {teacher.subject && (
+                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-medium rounded-full flex-shrink-0">
+                              {teacher.subject}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">
+                          @{teacher.username}
+                        </p>
+                        {teacher.phone && (
+                          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                            {teacher.phone}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Menu Button */}
+                      <div className="relative">
                         <button
-                          className="bg-slate-200 dark:bg-slate-700 text-text-primary-light dark:text-text-primary-dark px-4 py-2 rounded font-bold"
-                          onClick={() => setShowDelete({ open: false })}
-                          disabled={deleteLoading}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="bg-red-500 text-white px-4 py-2 rounded font-bold hover:bg-red-600 dark:hover:bg-red-700 transition"
-                          onClick={async () => {
-                            setDeleteLoading(true);
-                            setError(null);
-                            try {
-                              await api.delete(`/users/${showDelete.teacher!._id}`);
-                              setShowDelete({ open: false });
-                              fetchTeachers();
-                            } catch (e: any) {
-                              setError(e.message || 'Failed to delete teacher');
-                            } finally {
-                              setDeleteLoading(false);
-                            }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMenuId(showMenuId === teacher._id ? null : teacher._id);
                           }}
-                          disabled={deleteLoading}
+                          className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
                         >
-                          {deleteLoading ? 'Deleting...' : 'Delete'}
+                          <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
                         </button>
+
+                        {/* Dropdown Menu */}
+                        <AnimatePresence>
+                          {showMenuId === teacher._id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="absolute right-0 top-10 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-text-primary-light dark:text-text-primary-dark flex items-center gap-2 transition-colors"
+                                onClick={() => openEditModal(teacher)}
+                              >
+                                <span className="material-symbols-outlined text-lg">edit</span>
+                                Edit
+                              </button>
+                              <button
+                                className="w-full px-4 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2 transition-colors"
+                                onClick={() => {
+                                  setShowDelete({ open: true, teacher });
+                                  setShowMenuId(null);
+                                }}
+                              >
+                                <span className="material-symbols-outlined text-lg">delete</span>
+                                Delete
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Add Teacher Button */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowCreate(true)}
+          className="w-full mt-6 h-14 bg-primary hover:bg-primary-dark text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-colors"
+        >
+          <span className="material-symbols-outlined">add</span>
+          Add Teacher
+        </motion.button>
+      </div>
+
+      {/* Create Teacher Modal */}
+      <AnimatePresence>
+        {showCreate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setShowCreate(false)}
+          >
+            <motion.form
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onSubmit={handleCreate}
+              className="bg-card-light dark:bg-card-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-card-light dark:bg-card-dark p-4 border-b border-border-light dark:border-border-dark flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">arrow_back</span>
+                </button>
+                <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">Create Teacher</h2>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Full Name (F.I.O) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+                      <span className="material-symbols-outlined text-xl">badge</span>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Enter full name"
+                      value={form.fullName}
+                      onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                      className="w-full h-12 pl-11 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                      required
+                    />
                   </div>
                 </div>
-              )}
-        {filtered.length === 0 && (
-          <div className="text-center text-slate-400 dark:text-slate-300 py-8">No teachers found</div>
-        )}
-      </div>
-      <button
-        className="w-full mt-8 py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 text-lg shadow-lg hover:bg-primary/90 transition"
-        onClick={() => setShowCreate(true)}
-      >
-        <span className="material-symbols-outlined">add</span>
-        Add Teacher
-      </button>
 
-      {/* Modal for creating teacher */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <form onSubmit={handleCreate} className="bg-white dark:bg-card-dark w-full max-w-md rounded-2xl shadow-xl flex flex-col gap-0 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-2 px-6 pt-6 pb-2 border-b dark:border-border-dark">
-              <button type="button" onClick={() => setShowCreate(false)} className="mr-2 text-slate-500 hover:text-primary">
-                <span className="material-symbols-outlined text-2xl">arrow_back</span>
-              </button>
-              <h2 className="font-extrabold text-xl text-text-primary-light dark:text-text-primary-dark">Create Teacher</h2>
-            </div>
-            <div className="px-6 py-2 overflow-y-auto">
-              {/* Personal Info */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Full Name (F.I.O)</label>
-                <div className="relative mb-3">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-symbols-outlined">badge</span>
-                  </span>
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+                      <span className="material-symbols-outlined text-xl">call</span>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="90 123 45 67"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="w-full h-12 pl-11 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Username */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Username *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+                      <span className="material-symbols-outlined text-xl">alternate_email</span>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="username"
+                      value={form.username}
+                      onChange={(e) => setForm({ ...form, username: e.target.value })}
+                      className="w-full h-12 pl-11 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Password *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+                      <span className="material-symbols-outlined text-xl">lock</span>
+                    </span>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value.replace(/\s/g, '') })}
+                      className="w-full h-12 pl-11 pr-12 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                      minLength={8}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-xl">
+                        {showPassword ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1 ml-1">
+                    Must be at least 8 characters
+                  </p>
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Subject / Department
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+                      <span className="material-symbols-outlined text-xl">school</span>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="English"
+                      value={form.subject}
+                      onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                      className="w-full h-12 pl-11 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-card-light dark:bg-card-dark p-4 border-t border-border-light dark:border-border-dark">
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {creating ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      Create Teacher Profile
+                      <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Teacher Modal */}
+      <AnimatePresence>
+        {showEdit.open && showEdit.teacher && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setShowEdit({ open: false })}
+          >
+            <motion.form
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onSubmit={handleEdit}
+              className="bg-card-light dark:bg-card-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-card-light dark:bg-card-dark p-4 border-b border-border-light dark:border-border-dark flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit({ open: false })}
+                  className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">arrow_back</span>
+                </button>
+                <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">Edit Teacher</h2>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Full Name
+                  </label>
                   <input
-                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                    placeholder="F.I.O"
-                    value={form.fullName}
-                    onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
+                    type="text"
+                    value={editForm.fullName}
+                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                    className="w-full h-12 px-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                     required
                   />
                 </div>
-                <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Phone Number</label>
-                <div className="relative mb-3">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-symbols-outlined">call</span>
-                  </span>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Phone
+                  </label>
                   <input
-                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                    placeholder="+998 90 123-45-67"
-                    value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full h-12 px-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                  />
+                </div>
+
+                {/* Username */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.username}
+                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                    className="w-full h-12 px-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                     required
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    New Password <span className="text-text-secondary-light dark:text-text-secondary-dark font-normal">(leave empty to keep current)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showEditPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={editForm.password}
+                      onChange={(e) => setEditForm({ ...editForm, password: e.target.value.replace(/\s/g, '') })}
+                      className="w-full h-12 px-4 pr-12 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-xl">
+                        {showEditPassword ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.subject}
+                    onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                    className="w-full h-12 px-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                   />
                 </div>
               </div>
-              {/* Account Access */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Username</label>
-                <div className="relative mb-3">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-symbols-outlined">alternate_email</span>
-                  </span>
-                  <input
-                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                    placeholder="username"
-                    value={form.username}
-                    onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                    required
-                  />
-                </div>
-                <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Password</label>
-                <div className="relative mb-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-symbols-outlined">lock</span>
-                  </span>
-                  <input
-                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                    placeholder="Password"
-                    type="password"
-                    minLength={8}
-                    value={form.password}
-                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                    required
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer select-none">
-                    <span className="material-symbols-outlined">visibility</span>
-                  </span>
-                </div>
-                <div className="text-xs text-slate-400 dark:text-slate-500 ml-1 mb-2">Must be at least 8 characters</div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-card-light dark:bg-card-dark p-4 border-t border-border-light dark:border-border-dark flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit({ open: false })}
+                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 h-12 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {editLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-lg">save</span>
+                      Save Changes
+                    </>
+                  )}
+                </button>
               </div>
-              {/* Department Details */}
-              <div className="mb-2">
-                <label className="block text-sm font-semibold mb-1 text-text-primary-light dark:text-text-primary-dark">Subject / Department</label>
-                <div className="relative mb-3">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span className="material-symbols-outlined">school</span>
-                  </span>
-                  <input
-                    className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                    placeholder="English"
-                    value={form.subject}
-                    onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                  />
-                </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDelete.open && showDelete.teacher && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setShowDelete({ open: false })}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-card-light dark:bg-card-dark rounded-2xl w-full max-w-sm p-6 shadow-xl text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-3xl text-red-500">delete</span>
               </div>
-              {error && <div className="text-red-500 dark:text-red-300 text-sm mb-2">{error}</div>}
-            </div>
-            <div className="px-6 pb-6 pt-2">
-              <button
-                type="submit"
-                className="w-full py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 text-lg shadow-lg hover:bg-primary/90 transition"
-                disabled={creating}
-              >
-                Create Teacher Profile
-                <span className="material-symbols-outlined ml-1">arrow_forward</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+              <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-2">
+                Delete Teacher?
+              </h2>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark mb-1">
+                Are you sure you want to delete
+              </p>
+              <p className="font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                {showDelete.teacher.fullName}?
+              </p>
+              <p className="text-sm text-red-500 mb-6">
+                This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDelete({ open: false })}
+                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold flex items-center justify-center transition-colors disabled:opacity-50"
+                >
+                  {deleteLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
