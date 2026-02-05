@@ -21,6 +21,8 @@ interface Appointment {
   };
   reason: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+  attendanceStatus?: 'pending' | 'attended' | 'noShow';
+  attendanceMarkedAt?: string;
   rejectionReason?: string;
   notes?: string;
   createdAt: string;
@@ -42,18 +44,56 @@ export default function SupportTeacherAppointmentsView() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'completed'>('pending');
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'complete' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'complete' | 'markAttendance' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [attendanceStatus, setAttendanceStatus] = useState<'attended' | 'noShow'>('attended');
+  const [stats, setStats] = useState<{
+    totalSessions: number;
+    totalHours: number;
+    totalMinutes: number;
+    weeklyHours: number;
+    weeklyMinutes: number;
+    monthlyHours: number;
+    monthlyMinutes: number;
+    pendingCount: number;
+    approvedCount: number;
+  } | null>(null);
 
   const getDayLabel = (dayOfWeek: number) => {
     return DAYS_OF_WEEK.find(d => d.value === dayOfWeek)?.label || '';
   };
 
+  // Calculate the next occurrence of a day of week from a given date
+  const getNextDateForDay = (dayOfWeek: number, fromDate?: string): string => {
+    const baseDate = fromDate ? new Date(fromDate) : new Date();
+    const currentDay = baseDate.getDay();
+    let daysUntil = dayOfWeek - currentDay;
+    if (daysUntil <= 0) daysUntil += 7; // Next week if today or past
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(baseDate.getDate() + daysUntil);
+    return nextDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   useEffect(() => {
     fetchAppointments();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/appointments/teacher-stats');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const fetchAppointments = async () => {
     try {
@@ -76,19 +116,28 @@ export default function SupportTeacherAppointmentsView() {
 
     setSubmitting(true);
     try {
-      const statusMap = {
-        approve: 'approved',
-        reject: 'rejected',
-        complete: 'completed'
-      };
+      if (actionType === 'markAttendance') {
+        // Mark attendance for approved appointments
+        await api.put(`/appointments/${selectedAppointment._id}/attendance`, {
+          attendanceStatus
+        });
+        toast.success(attendanceStatus === 'attended' ? 'Marked as attended' : 'Marked as no-show (student blocked for 2 weeks)');
+      } else {
+        const statusMap = {
+          approve: 'approved',
+          reject: 'rejected',
+          complete: 'completed'
+        };
 
-      await api.put(`/appointments/${selectedAppointment._id}/status`, {
-        status: statusMap[actionType],
-        rejectionReason: rejectionReason.trim(),
-        notes: notes.trim()
-      });
+        await api.put(`/appointments/${selectedAppointment._id}/status`, {
+          status: statusMap[actionType],
+          rejectionReason: rejectionReason.trim(),
+          notes: notes.trim()
+        });
+      }
 
       await fetchAppointments();
+      await fetchStats(); // Refresh stats after action
       closeModal();
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -98,11 +147,12 @@ export default function SupportTeacherAppointmentsView() {
     }
   };
 
-  const openActionModal = (appointment: Appointment, action: 'approve' | 'reject' | 'complete') => {
+  const openActionModal = (appointment: Appointment, action: 'approve' | 'reject' | 'complete' | 'markAttendance') => {
     setSelectedAppointment(appointment);
     setActionType(action);
     setRejectionReason('');
     setNotes('');
+    setAttendanceStatus('attended');
     setShowModal(true);
   };
 
@@ -136,10 +186,15 @@ export default function SupportTeacherAppointmentsView() {
     );
   };
 
-  const filteredAppointments = appointments.filter(a => {
-    if (filter === 'all') return true;
-    return a.status === filter;
-  });
+  const filteredAppointments = appointments
+    .filter(a => {
+      if (filter === 'all') return true;
+      return a.status === filter;
+    })
+    .sort((a, b) => {
+      // Sort by createdAt descending (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const pendingCount = appointments.filter(a => a.status === 'pending').length;
   const approvedCount = appointments.filter(a => a.status === 'approved').length;
@@ -164,17 +219,39 @@ export default function SupportTeacherAppointmentsView() {
           Student appointment requests
         </p>
         
-        {/* Stats */}
-        <div className="flex gap-4 mt-4">
-          <div className="bg-white/20 px-4 py-2 rounded-xl">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-4 gap-2 mt-4">
+          <div className="bg-white/20 px-3 py-2 rounded-xl text-center">
             <p className="text-xs text-white/70">Pending</p>
-            <p className="text-xl font-bold">{pendingCount}</p>
+            <p className="text-lg font-bold">{stats?.pendingCount ?? pendingCount}</p>
           </div>
-          <div className="bg-white/20 px-4 py-2 rounded-xl">
+          <div className="bg-white/20 px-3 py-2 rounded-xl text-center">
             <p className="text-xs text-white/70">Approved</p>
-            <p className="text-xl font-bold">{approvedCount}</p>
+            <p className="text-lg font-bold">{stats?.approvedCount ?? approvedCount}</p>
+          </div>
+          <div className="bg-white/20 px-3 py-2 rounded-xl text-center">
+            <p className="text-xs text-white/70">Sessions</p>
+            <p className="text-lg font-bold">{stats?.totalSessions ?? 0}</p>
+          </div>
+          <div className="bg-white/20 px-3 py-2 rounded-xl text-center">
+            <p className="text-xs text-white/70">Total Hours</p>
+            <p className="text-lg font-bold">{stats?.totalHours ?? 0}h {stats?.totalMinutes ?? 0}m</p>
           </div>
         </div>
+
+        {/* Weekly/Monthly Hours */}
+        {stats && (stats.weeklyHours > 0 || stats.monthlyHours > 0) && (
+          <div className="flex gap-3 mt-3">
+            <div className="flex-1 bg-green-500/30 px-3 py-2 rounded-xl">
+              <p className="text-xs text-white/80">📅 This Week</p>
+              <p className="text-sm font-bold">{stats.weeklyHours}h {stats.weeklyMinutes}m</p>
+            </div>
+            <div className="flex-1 bg-purple-500/30 px-3 py-2 rounded-xl">
+              <p className="text-xs text-white/80">📆 This Month</p>
+              <p className="text-sm font-bold">{stats.monthlyHours}h {stats.monthlyMinutes}m</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter Tabs */}
@@ -232,8 +309,16 @@ export default function SupportTeacherAppointmentsView() {
               </div>
 
               <div className="space-y-2 text-sm">
-                <p className="text-gray-600">
-                  📅 Every {getDayLabel(appointment.dayOfWeek)}
+                <p className="text-gray-600 font-medium">
+                  📅 {(appointment.attendanceMarkedAt || appointment.status === 'completed' || appointment.attendanceStatus === 'attended') 
+                    ? new Date(appointment.attendanceMarkedAt || appointment.createdAt).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })
+                    : getNextDateForDay(appointment.dayOfWeek, appointment.createdAt)
+                  }
                 </p>
                 <p className="text-gray-600">
                   ⏰ {appointment.timeSlot.startTime} - {appointment.timeSlot.endTime}
@@ -267,12 +352,26 @@ export default function SupportTeacherAppointmentsView() {
               )}
 
               {appointment.status === 'approved' && (
-                <button
-                  onClick={() => openActionModal(appointment, 'complete')}
-                  className="w-full mt-4 py-2 bg-blue-100 text-blue-600 rounded-xl font-medium hover:bg-blue-200 transition-colors"
-                >
-                  ✓ Complete
-                </button>
+                <div className="flex gap-2 mt-4">
+                  {appointment.attendanceStatus === 'pending' ? (
+                    <>
+                      <button
+                        onClick={() => openActionModal(appointment, 'markAttendance')}
+                        className="flex-1 py-2 bg-blue-100 text-blue-600 rounded-xl font-medium hover:bg-blue-200 transition-colors"
+                      >
+                        📋 Mark Attendance
+                      </button>
+                    </>
+                  ) : (
+                    <div className={`flex-1 py-2 px-3 rounded-xl text-center text-sm font-medium ${
+                      appointment.attendanceStatus === 'attended' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {appointment.attendanceStatus === 'attended' ? '✅ Attended' : '❌ No-show (blocked)'}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ))
@@ -288,6 +387,7 @@ export default function SupportTeacherAppointmentsView() {
                 {actionType === 'approve' && '✅ Approve'}
                 {actionType === 'reject' && '❌ Reject'}
                 {actionType === 'complete' && '✓ Complete'}
+                {actionType === 'markAttendance' && '📋 Mark Attendance'}
               </h2>
               <p className="text-sm text-gray-500">
                 {selectedAppointment.studentId?.fullName}
@@ -324,6 +424,45 @@ export default function SupportTeacherAppointmentsView() {
                   />
                 </div>
               )}
+
+              {actionType === 'markAttendance' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Did the student attend?
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setAttendanceStatus('attended')}
+                      className={`flex-1 py-4 rounded-xl font-medium border-2 transition-all ${
+                        attendanceStatus === 'attended'
+                          ? 'bg-green-100 border-green-500 text-green-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <span className="text-2xl block mb-1">✅</span>
+                      Attended
+                    </button>
+                    <button
+                      onClick={() => setAttendanceStatus('noShow')}
+                      className={`flex-1 py-4 rounded-xl font-medium border-2 transition-all ${
+                        attendanceStatus === 'noShow'
+                          ? 'bg-red-100 border-red-500 text-red-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <span className="text-2xl block mb-1">❌</span>
+                      No-show
+                    </button>
+                  </div>
+                  {attendanceStatus === 'noShow' && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm text-red-700">
+                        ⚠️ The student will be blocked from booking for 2 weeks.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t flex gap-3">
@@ -339,6 +478,7 @@ export default function SupportTeacherAppointmentsView() {
                 className={`flex-1 py-3 rounded-xl font-medium disabled:opacity-50 ${
                   actionType === 'approve' ? 'bg-green-600 text-white' :
                   actionType === 'reject' ? 'bg-red-600 text-white' :
+                  actionType === 'markAttendance' ? (attendanceStatus === 'attended' ? 'bg-green-600 text-white' : 'bg-red-600 text-white') :
                   'bg-blue-600 text-white'
                 }`}
               >

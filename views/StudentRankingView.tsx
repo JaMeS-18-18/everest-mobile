@@ -39,6 +39,32 @@ const StudentRankingView: React.FC = () => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
+
+  // Get the period date range label
+  const getPeriodLabel = () => {
+    const now = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    if (timePeriod === 'monthly') {
+      // Show current month and year (e.g., "February 2025")
+      return `${months[now.getMonth()]} ${now.getFullYear()}`;
+    } else if (timePeriod === 'weekly') {
+      // Get Monday of current week
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - daysToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      const formatDate = (d: Date) => `${months[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+      return `${formatDate(monday)} - ${formatDate(sunday)}`;
+    } else {
+      // Yearly - show the year
+      return `${now.getFullYear()}`;
+    }
+  };
   
   const getProfileImageUrl = (url?: string) => {
     if (!url) return undefined;
@@ -192,6 +218,14 @@ const StudentRankingView: React.FC = () => {
                 {period.label}
               </button>
             ))}
+          </div>
+
+          {/* Period Date Label */}
+          <div className="text-center mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-600 dark:text-slate-300">
+              <span className="material-symbols-outlined text-base">calendar_month</span>
+              {getPeriodLabel()}
+            </span>
           </div>
 
           <div className="text-center mb-2">

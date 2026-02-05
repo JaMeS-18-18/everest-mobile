@@ -76,6 +76,13 @@ export default function StudentAppointmentView() {
   const [bookedSlots, setBookedSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [blockStatus, setBlockStatus] = useState<{ blocked: boolean; daysLeft?: number; blockedUntil?: string } | null>(null);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [pendingBookingData, setPendingBookingData] = useState<any>(null);
+
+  useEffect(() => {
+    checkBlockStatus();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'book') {
@@ -84,6 +91,15 @@ export default function StudentAppointmentView() {
       fetchMyAppointments();
     }
   }, [activeTab]);
+
+  const checkBlockStatus = async () => {
+    try {
+      const response = await api.get('/appointments/check-block-status');
+      setBlockStatus(response.data);
+    } catch (error) {
+      console.error('Error checking block status:', error);
+    }
+  };
 
   const fetchSupportTeachers = async () => {
     setLoading(true);
@@ -286,32 +302,41 @@ export default function StudentAppointmentView() {
       return;
     }
 
+    // Show warning modal first
+    const nextDate = getNextDateForDay(selectedDayOfWeek);
+    setPendingBookingData({
+      supportTeacherId: selectedTeacher._id,
+      dayOfWeek: selectedDayOfWeek,
+      date: nextDate,
+      timeSlot: {
+        startTime: selectedStartTime,
+        endTime: endTime
+      },
+      reason: reason.trim()
+    });
+    setShowWarningModal(true);
+  };
+
+  const confirmBooking = async () => {
+    if (!pendingBookingData) return;
+
     setSubmitting(true);
     try {
-      // Calculate next date for the selected day of week
-      const nextDate = getNextDateForDay(selectedDayOfWeek);
-
-      await api.post('/appointments', {
-        supportTeacherId: selectedTeacher._id,
-        dayOfWeek: selectedDayOfWeek,
-        date: nextDate,
-        timeSlot: {
-          startTime: selectedStartTime,
-          endTime: endTime
-        },
-        reason: reason.trim()
-      });
+      await api.post('/appointments', pendingBookingData);
 
       toast.success('Appointment booked! Please wait for confirmation.');
       setShowModal(false);
+      setShowWarningModal(false);
       setSelectedTeacher(null);
       setSelectedDayOfWeek(null);
       setSelectedStartTime('');
       setSelectedDuration(60);
       setReason('');
+      setPendingBookingData(null);
       setActiveTab('my');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'An error occurred');
+      setShowWarningModal(false);
     } finally {
       setSubmitting(false);
     }
@@ -353,6 +378,23 @@ export default function StudentAppointmentView() {
 
   const getDayLabel = (dayOfWeek: number) => {
     return DAYS_OF_WEEK.find(d => d.value === dayOfWeek)?.label || '';
+  };
+
+  // Calculate the next occurrence of a day of week
+  const getAppointmentDate = (dayOfWeek: number, createdAt?: string, status?: string): string => {
+    // For completed/cancelled, show the date it was for
+    const baseDate = createdAt ? new Date(createdAt) : new Date();
+    const currentDay = baseDate.getDay();
+    let daysUntil = dayOfWeek - currentDay;
+    if (daysUntil <= 0) daysUntil += 7;
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(baseDate.getDate() + daysUntil);
+    return nextDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   if (loading) {
@@ -405,10 +447,30 @@ export default function StudentAppointmentView() {
       <div className="p-4">
         {activeTab === 'book' ? (
           <>
+            {/* Block Status Warning */}
+            {blockStatus?.blocked && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🚫</span>
+                  <div>
+                    <h3 className="font-bold text-red-700">You are temporarily blocked</h3>
+                    <p className="text-sm text-red-600 mt-1">
+                      You missed a booked appointment. You can book again in {blockStatus.daysLeft} days.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {supportTeachers.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl">
                 <span className="text-6xl block mb-4">😔</span>
                 <p className="text-gray-500">No teachers with available slots at the moment</p>
+              </div>
+            ) : blockStatus?.blocked ? (
+              <div className="text-center py-12 bg-white rounded-2xl opacity-50">
+                <span className="text-6xl block mb-4">📅</span>
+                <p className="text-gray-500">Booking is temporarily disabled</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -477,15 +539,15 @@ export default function StudentAppointmentView() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-gray-800">
-                            {appointment.supportTeacherId.fullName}
+                            {appointment.supportTeacherId?.fullName || 'Unknown'}
                           </h3>
                           {getStatusBadge(appointment.status)}
                         </div>
-                        <p className="text-sm text-gray-600">
-                          📅 Every {getDayLabel(appointment.dayOfWeek)}
+                        <p className="text-sm text-gray-600 font-medium">
+                          📅 {getAppointmentDate(appointment.dayOfWeek, appointment.date)}
                         </p>
                         <p className="text-sm text-gray-600">
-                          ⏰ {appointment.timeSlot.startTime} - {appointment.timeSlot.endTime}
+                          ⏰ {appointment.timeSlot?.startTime || '--:--'} - {appointment.timeSlot?.endTime || '--:--'}
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
                           📝 {appointment.reason}
@@ -726,6 +788,55 @@ export default function StudentAppointmentView() {
                   className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600"
                 >
                   Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warning Modal - Before Booking */}
+      {showWarningModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="text-center">
+              <span className="text-5xl block mb-4">⚠️</span>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Important Notice!</h3>
+              <div className="text-left bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Please note:</strong>
+                </p>
+                <ul className="text-sm text-gray-600 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span>📌</span>
+                    <span>If you don't attend the booked session, you will be <strong className="text-red-600">blocked from booking for 2 weeks</strong>.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span>📌</span>
+                    <span>Make sure you can attend before confirming.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span>📌</span>
+                    <span>If you can't attend, please cancel in advance.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowWarningModal(false);
+                    setPendingBookingData(null);
+                  }}
+                  className="flex-1 py-3 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmBooking}
+                  disabled={submitting}
+                  className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {submitting ? 'Booking...' : 'I Understand, Book'}
                 </button>
               </div>
             </div>

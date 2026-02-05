@@ -27,6 +27,20 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [failCount, setFailCount] = useState(0);
   const [blockedUntil, setBlockedUntilState] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved credentials on mount
+  React.useEffect(() => {
+    const savedCredentials = localStorage.getItem('savedCredentials');
+    if (savedCredentials) {
+      try {
+        const { username: savedUsername, password: savedPassword } = JSON.parse(savedCredentials);
+        setUsername(savedUsername || '');
+        setPassword(savedPassword || '');
+        setRememberMe(true);
+      } catch {}
+    }
+  }, []);
 
   // Helper to set blockedUntil and persist in localStorage
   const setBlockedUntil = (value: number | null) => {
@@ -115,6 +129,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       }
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      // Save or remove credentials based on rememberMe
+      if (rememberMe) {
+        localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
+      } else {
+        localStorage.removeItem('savedCredentials');
       }
 
       // Use role from response (support admin, teacher, student, parent, supportTeacher)
@@ -259,10 +280,29 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 </button>
               </div>
             </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setRememberMe(!rememberMe)}
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  rememberMe 
+                    ? 'bg-primary border-primary' 
+                    : 'border-slate-300 dark:border-slate-600'
+                }`}
+              >
+                {rememberMe && (
+                  <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                )}
+              </button>
+              <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">Remember me</span>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading || (blockedUntil && Date.now() < blockedUntil)}
-              className="w-full h-14 md:h-12 bg-primary hover:bg-primary-dark text-white text-lg md:text-base font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-14 md:h-12 bg-primary hover:bg-primary-dark text-white text-lg md:text-base font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
             >
               {isLoading ? (
@@ -414,10 +454,28 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 </div>
               </div>
 
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    rememberMe 
+                      ? 'bg-primary border-primary' 
+                      : 'border-slate-300 dark:border-slate-600'
+                  }`}
+                >
+                  {rememberMe && (
+                    <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                  )}
+                </button>
+                <span className="text-sm text-slate-600 dark:text-slate-400">Remember me</span>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading || (blockedUntil !== null && Date.now() < blockedUntil)}
-                className="w-full py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white text-base font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-6"
+                className="w-full py-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary text-white text-base font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-4"
               >
                 {isLoading ? (
                   <>

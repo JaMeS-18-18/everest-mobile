@@ -87,6 +87,31 @@ const ParentChildDetailView: React.FC = () => {
     totalStudents: number;
   } | null>(null);
   const [homeworkFilter, setHomeworkFilter] = useState<'all' | 'pending' | 'submitted' | 'graded' | 'overdue'>('all');
+  const [rankingPeriod, setRankingPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [rankingLoading, setRankingLoading] = useState(false);
+
+  // Get the period date range label
+  const getPeriodLabel = () => {
+    const now = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    if (rankingPeriod === 'monthly') {
+      return `${months[now.getMonth()]} ${now.getFullYear()}`;
+    } else if (rankingPeriod === 'weekly') {
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - daysToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      const formatDate = (d: Date) => `${months[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+      return `${formatDate(monday)} - ${formatDate(sunday)}`;
+    } else {
+      return `${now.getFullYear()}`;
+    }
+  };
 
   useEffect(() => {
     if (!studentId) return;
@@ -126,6 +151,27 @@ const ParentChildDetailView: React.FC = () => {
       controller.abort();
     };
   }, [studentId]);
+
+  // Fetch ranking when period changes
+  useEffect(() => {
+    if (!studentId) return;
+    
+    const fetchRanking = async () => {
+      setRankingLoading(true);
+      try {
+        const response = await api.get(`/parents/child/${studentId}/ranking?period=${rankingPeriod}`);
+        if (response.data.success) {
+          setRanking(response.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch ranking:', err);
+      } finally {
+        setRankingLoading(false);
+      }
+    };
+    
+    fetchRanking();
+  }, [studentId, rankingPeriod]);
 
   const gradeStatuses = ['Worse', 'Bad', 'Good', 'Better', 'Perfect'];
   
@@ -393,16 +439,52 @@ const ParentChildDetailView: React.FC = () => {
         )}
 
         {/* Ranking Tab */}
-        {activeTab === 'ranking' && ranking && (
+        {activeTab === 'ranking' && (
           <div className="space-y-4">
-            {/* Child's Position */}
-            {ranking.childData && (
-              <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl p-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                    #{ranking.childRank}
-                  </div>
-                  <div>
+            {/* Time Period Filter */}
+            <div className="flex gap-2 justify-center">
+              {[
+                { key: 'weekly', label: 'Weekly' },
+                { key: 'monthly', label: 'Monthly' },
+                { key: 'yearly', label: 'Yearly' }
+              ].map((period) => (
+                <button
+                  key={period.key}
+                  onClick={() => setRankingPeriod(period.key as 'weekly' | 'monthly' | 'yearly')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    rankingPeriod === period.key
+                      ? 'bg-blue-500 text-white shadow-md'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Period Date Label */}
+            <div className="text-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-600 dark:text-slate-300">
+                <span className="material-symbols-outlined text-base">calendar_month</span>
+                {getPeriodLabel()}
+              </span>
+            </div>
+
+            {/* Loading State */}
+            {rankingLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : ranking ? (
+              <>
+                {/* Child's Position */}
+                {ranking.childData && (
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                        #{ranking.childRank}
+                      </div>
+                      <div>
                     <p className="text-blue-100 text-sm">Current Position</p>
                     <p className="text-xl font-bold">{ranking.childData.totalPoints} points</p>
                     <p className="text-blue-100 text-sm">out of {ranking.totalStudents} students</p>
@@ -472,6 +554,8 @@ const ParentChildDetailView: React.FC = () => {
                 </div>
               )}
             </div>
+              </>
+            ) : null}
           </div>
         )}
       </div>

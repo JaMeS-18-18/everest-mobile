@@ -283,14 +283,27 @@ const TasksView: React.FC = () => {
   const addTaskFiles = (id: string, newFiles: FileList | null) => {
     if (!newFiles) return;
     const validFiles: File[] = [];
+    
+    // Allowed image MIME types including HEIC/HEIF
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'image/heic', 'image/heif', 'image/bmp', 'image/tiff', 'image/svg+xml'
+    ];
+    
     for (let i = 0; i < newFiles.length; i++) {
       const file = newFiles[i];
-      if (!file.type.startsWith('image/')) {
-        alert('Faqat rasm fayllarini yuklash mumkin!');
+      // Check if it's an image (including HEIC)
+      const isImage = file.type.startsWith('image/') || 
+                      allowedTypes.includes(file.type.toLowerCase()) ||
+                      file.name.toLowerCase().endsWith('.heic') ||
+                      file.name.toLowerCase().endsWith('.heif');
+      
+      if (!isImage) {
+        alert('Only image files are allowed!');
         continue;
       }
-      if (file.size > 4 * 1024 * 1024) {
-        alert('The image size must not exceed 4MB!');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('The image size must not exceed 10MB!');
         continue;
       }
       validFiles.push(file);
@@ -819,7 +832,7 @@ const TasksView: React.FC = () => {
                           e.target.value = '';
                         }}
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*,.heic,.heif"
                       />
                       <button
                         onClick={() => fileInputRefs.current[task.id]?.click()}
@@ -1099,7 +1112,7 @@ const TasksView: React.FC = () => {
                           e.target.value = '';
                         }}
                         className="hidden"
-                        accept="image/*,.pdf,.doc,.docx"
+                        accept="image/*,.heic,.heif,.pdf,.doc,.docx"
                       />
                       <button
                         onClick={() => fileInputRefs.current[task.id]?.click()}

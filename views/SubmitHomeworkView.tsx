@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { toast } from 'react-toastify';
 import api from '../api';
 
 interface ImageFile {
@@ -52,7 +53,8 @@ const SubmitHomeworkView: React.FC = () => {
   const [selectedTaskIndex, setSelectedTaskIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [previewImages, setPreviewImages] = useState<{[key: string]: string[]}>({});
+  const [previewImages, setPreviewImages] = useState<{ [key: string]: string[] }>({});
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState<{ show: boolean, navigateTo: number | null }>({ show: false, navigateTo: null });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -76,7 +78,7 @@ const SubmitHomeworkView: React.FC = () => {
       if (savedPreviews) {
         try {
           previewsObj = JSON.parse(savedPreviews);
-        } catch {}
+        } catch { }
       }
       if (saved) {
         try {
@@ -92,7 +94,7 @@ const SubmitHomeworkView: React.FC = () => {
             setPreviewImages(previewsObj);
             return;
           }
-        } catch {}
+        } catch { }
       }
       setTaskAnswers(
         homework.assignments.map(a => ({
@@ -111,7 +113,7 @@ const SubmitHomeworkView: React.FC = () => {
       setIsLoading(true);
       const response = await api.get(`/homework/${homeworkId}`);
       const data = response.data;
-      
+
       if (data.success) {
         // Check if submission is allowed
         if (!data.data.canSubmit) {
@@ -136,16 +138,16 @@ const SubmitHomeworkView: React.FC = () => {
   const handleSubmitAll = async () => {
     // Only include answers that have content (text or files)
     const answersWithContent = taskAnswers.filter(a => a.text.trim() || a.files.length > 0);
-    
+
     if (answersWithContent.length === 0) {
-      alert('Please answer at least one task');
+      toast.error('Please answer at least one task');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      
+
       // Only send answers that have actual content
       answersWithContent.forEach((answer, index) => {
         formData.append(`answers[${index}][assignmentId]`, answer.assignmentId);
@@ -170,15 +172,15 @@ const SubmitHomeworkView: React.FC = () => {
         throw new Error(response.data.message || 'Failed to submit homework');
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to submit homework');
+      toast.error(err instanceof Error ? err.message : 'Failed to submit homework');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const updateTaskAnswer = (assignmentId: string, field: 'text' | 'files', value: string | File[]) => {
-    setTaskAnswers(prev => prev.map(a => 
-      a.assignmentId === assignmentId 
+    setTaskAnswers(prev => prev.map(a =>
+      a.assignmentId === assignmentId
         ? { ...a, [field]: value }
         : a
     ));
@@ -213,8 +215,55 @@ const SubmitHomeworkView: React.FC = () => {
 
       setSelectedTaskIndex(null);
     } else {
-      alert('Please write an answer or upload a file');
+      toast.warning('Please write an answer or upload a file');
     }
+  };
+
+  // Check if current task has unsaved changes
+  const hasUnsavedChanges = () => {
+    if (selectedTaskIndex === null) return false;
+    const answer = taskAnswers[selectedTaskIndex];
+    const hasContent = answer.text.trim() || answer.files.length > 0;
+    return hasContent && !answer.completed;
+  };
+
+  // Handle leaving task without completing
+  const handleLeaveTask = (navigateTo: number | null) => {
+    if (hasUnsavedChanges()) {
+      setShowLeaveConfirm({ show: true, navigateTo });
+      return;
+    }
+    setSelectedTaskIndex(navigateTo);
+  };
+
+  // Confirm leave without saving - clear unsaved changes
+  const confirmLeave = () => {
+    if (selectedTaskIndex !== null) {
+      const assignmentId = taskAnswers[selectedTaskIndex].assignmentId;
+
+      // Clear the unsaved text and files for this task
+      setTaskAnswers(prev => prev.map(a =>
+        a.assignmentId === assignmentId
+          ? { ...a, text: '', files: [], completed: false }
+          : a
+      ));
+
+      // Clear preview images for this task
+      setPreviewImages(prev => {
+        const newPreviews = { ...prev };
+        delete newPreviews[assignmentId];
+        return newPreviews;
+      });
+    }
+
+    setSelectedTaskIndex(showLeaveConfirm.navigateTo);
+    setShowLeaveConfirm({ show: false, navigateTo: null });
+    toast.info('Changes discarded');
+  };
+
+  // Cancel leave
+  const cancelLeave = () => {
+    setShowLeaveConfirm({ show: false, navigateTo: null });
   };
 
   const addFiles = (files: FileList | null) => {
@@ -225,13 +274,25 @@ const SubmitHomeworkView: React.FC = () => {
     const newPreviews: string[] = [];
     let errorMsg = '';
 
+    // Allowed image MIME types including HEIC/HEIF
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'image/heic', 'image/heif', 'image/bmp', 'image/tiff', 'image/svg+xml'
+    ];
+
     newFiles.forEach(file => {
-      if (!file.type.startsWith('image/')) {
+      // Check if it's an image (including HEIC)
+      const isImage = file.type.startsWith('image/') ||
+        allowedTypes.includes(file.type.toLowerCase()) ||
+        file.name.toLowerCase().endsWith('.heic') ||
+        file.name.toLowerCase().endsWith('.heif');
+
+      if (!isImage) {
         errorMsg = 'Only image files are allowed!';
         return;
       }
-      if (file.size > 4 * 1024 * 1024) {
-        errorMsg = 'The image size must not exceed 4MB!';
+      if (file.size > 10 * 1024 * 1024) {
+        errorMsg = 'The image size must not exceed 10MB!';
         return;
       }
       validFiles.push(file);
@@ -239,7 +300,7 @@ const SubmitHomeworkView: React.FC = () => {
     });
 
     if (errorMsg) {
-      alert(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
@@ -258,18 +319,18 @@ const SubmitHomeworkView: React.FC = () => {
   const removeFile = (fileIndex: number) => {
     if (selectedTaskIndex === null) return;
     const assignmentId = taskAnswers[selectedTaskIndex].assignmentId;
-    
+
     // Revoke old preview URL
     const oldPreviews = previewImages[assignmentId] || [];
     if (oldPreviews[fileIndex]) {
       URL.revokeObjectURL(oldPreviews[fileIndex]);
     }
-    
+
     setPreviewImages(prev => ({
       ...prev,
       [assignmentId]: (prev[assignmentId] || []).filter((_, i) => i !== fileIndex)
     }));
-    
+
     setTaskAnswers(prev => prev.map(a =>
       a.assignmentId === assignmentId
         ? { ...a, files: a.files.filter((_, i) => i !== fileIndex) }
@@ -287,17 +348,17 @@ const SubmitHomeworkView: React.FC = () => {
   const getCompletedCount = () => taskAnswers.filter(a => a.completed).length;
   const getTotalTasks = () => homework?.assignments.length || 0;
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString; // fallback to raw string if invalid
-  return date.toLocaleString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // fallback to raw string if invalid
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   if (isLoading) {
     return <Loader />;
@@ -325,7 +386,7 @@ const formatDate = (dateString: string) => {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background-light dark:bg-background-dark p-4 pt-12 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-3">
-          <button 
+          <button
             onClick={onBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
           >
@@ -338,7 +399,7 @@ const formatDate = (dateString: string) => {
         {/* Progress */}
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-primary transition-all duration-300"
               style={{ width: `${(getCompletedCount() / getTotalTasks()) * 100}%` }}
             />
@@ -374,16 +435,15 @@ const formatDate = (dateString: string) => {
               const hasAnswer = answer?.text.trim() || (answer?.files.length || 0) > 0;
               const isComplete = answer?.completed || hasAnswer;
               const imageCount = answer?.files.filter(f => f.type.startsWith('image/')).length || 0;
-              
+
               return (
                 <button
                   key={assignment._id}
                   onClick={() => setSelectedTaskIndex(index)}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center transition-all relative ${
-                    isComplete
-                      ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500 text-green-700'
-                      : 'bg-card-light dark:bg-card-dark border-2 border-slate-200 dark:border-slate-700 hover:border-primary'
-                  }`}
+                  className={`aspect-square rounded-xl flex flex-col items-center justify-center transition-all relative ${isComplete
+                    ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500 text-green-700'
+                    : 'bg-card-light dark:bg-card-dark border-2 border-slate-200 dark:border-slate-700 hover:border-primary'
+                    }`}
                 >
                   <span className={`text-2xl font-bold ${isComplete ? 'text-green-600' : ''}`}>
                     {index + 1}
@@ -408,23 +468,21 @@ const formatDate = (dateString: string) => {
               const hasAnswer = answer?.text.trim() || (answer?.files.length || 0) > 0;
               const isComplete = answer?.completed || hasAnswer;
               const imageCount = answer?.files.filter(f => f.type.startsWith('image/')).length || 0;
-              
+
               return (
                 <button
                   key={assignment._id}
                   onClick={() => setSelectedTaskIndex(index)}
-                  className={`w-full text-left bg-card-light dark:bg-card-dark rounded-xl p-4 border-2 transition-all ${
-                    isComplete
-                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-primary'
-                  }`}
+                  className={`w-full text-left bg-card-light dark:bg-card-dark rounded-xl p-4 border-2 transition-all ${isComplete
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-primary'
+                    }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg font-bold ${
-                      isComplete
-                        ? 'bg-green-500 text-white'
-                        : 'bg-primary/10 text-primary'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg font-bold ${isComplete
+                      ? 'bg-green-500 text-white'
+                      : 'bg-primary/10 text-primary'
+                      }`}>
                       {index + 1}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -467,18 +525,18 @@ const formatDate = (dateString: string) => {
           {/* Task Navigation */}
           <div className="flex items-center justify-between py-4">
             <button
-              onClick={() => setSelectedTaskIndex(selectedTaskIndex > 0 ? selectedTaskIndex - 1 : null)}
+              onClick={() => handleLeaveTask(selectedTaskIndex > 0 ? selectedTaskIndex - 1 : null)}
               disabled={selectedTaskIndex === 0}
               className="flex items-center gap-1 text-primary disabled:text-slate-300"
             >
               <span className="material-symbols-outlined">chevron_left</span>
               <span className="text-sm font-medium">Previous</span>
             </button>
-            
+
             <span className="text-lg font-bold">Task {selectedTaskIndex + 1}</span>
-            
+
             <button
-              onClick={() => setSelectedTaskIndex(selectedTaskIndex < getTotalTasks() - 1 ? selectedTaskIndex + 1 : null)}
+              onClick={() => handleLeaveTask(selectedTaskIndex < getTotalTasks() - 1 ? selectedTaskIndex + 1 : null)}
               disabled={selectedTaskIndex >= getTotalTasks() - 1}
               className="flex items-center gap-1 text-primary disabled:text-slate-300"
             >
@@ -496,7 +554,7 @@ const formatDate = (dateString: string) => {
               <div className="flex-1">
                 <h3 className="font-bold text-lg">{selectedTask.name}</h3>
                 <p className="text-sm text-slate-500">
-                  {selectedTask.images.length > 0 
+                  {selectedTask.images.length > 0
                     ? `${selectedTask.images.length} images attached`
                     : 'No additional materials'
                   }
@@ -515,7 +573,7 @@ const formatDate = (dateString: string) => {
                       onClick={() => setSelectedImage(img.url)}
                       className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                     >
-                      <img 
+                      <img
                         src={img.url}
                         alt=""
                         className="w-full h-full object-cover hover:scale-105 transition-transform"
@@ -555,38 +613,38 @@ const formatDate = (dateString: string) => {
                 {/* Show previewImages if files are empty (after reload) */}
                 {(selectedAnswer.files.length > 0
                   ? selectedAnswer.files.map((file, fileIdx) => (
-                      file.type.startsWith('image/') && (
-                        <div key={fileIdx} className="relative w-16 h-16 group">
-                          <img 
-                            src={getImagePreview(file, fileIdx)}
-                            alt="" 
-                            className="w-16 h-16 object-cover rounded-lg"
-                            onClick={() => setSelectedImage(getImagePreview(file, fileIdx))}
-                          />
-                          <button
-                            onClick={() => removeFile(fileIdx)}
-                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                          >
-                            <span className="material-symbols-outlined text-[12px]">close</span>
-                          </button>
-                          <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-[9px] text-white">
-                            {(file.size / 1024).toFixed(0)} KB
-                          </div>
-                        </div>
-                      )
-                    ))
-                  : (previewImages[selectedAnswer.assignmentId] || []).map((url, fileIdx) => (
+                    file.type.startsWith('image/') && (
                       <div key={fileIdx} className="relative w-16 h-16 group">
-                        <img 
-                          src={url}
+                        <img
+                          src={getImagePreview(file, fileIdx)}
                           alt=""
                           className="w-16 h-16 object-cover rounded-lg"
-                          onClick={() => setSelectedImage(url)}
+                          onClick={() => setSelectedImage(getImagePreview(file, fileIdx))}
                         />
+                        <button
+                          onClick={() => removeFile(fileIdx)}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                        <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-[9px] text-white">
+                          {(file.size / 1024).toFixed(0)} KB
+                        </div>
                       </div>
-                    ))
+                    )
+                  ))
+                  : (previewImages[selectedAnswer.assignmentId] || []).map((url, fileIdx) => (
+                    <div key={fileIdx} className="relative w-16 h-16 group">
+                      <img
+                        src={url}
+                        alt=""
+                        className="w-16 h-16 object-cover rounded-lg"
+                        onClick={() => setSelectedImage(url)}
+                      />
+                    </div>
+                  ))
                 )}
-                
+
                 {/* Add Image Buttons */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -595,7 +653,7 @@ const formatDate = (dateString: string) => {
                   <span className="material-symbols-outlined text-xl text-slate-400">add_photo_alternate</span>
                   <span className="text-[9px] text-slate-400">Gallery</span>
                 </button>
-                
+
                 {/* <button
                   onClick={() => cameraInputRef.current?.click()}
                   className="aspect-square rounded-xl border-2 border-dashed border-primary/50 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 transition-colors"
@@ -615,9 +673,9 @@ const formatDate = (dateString: string) => {
                   e.target.value = '';
                 }}
                 className="hidden"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
               />
-              
+
               <input
                 type="file"
                 ref={cameraInputRef}
@@ -626,7 +684,7 @@ const formatDate = (dateString: string) => {
                   e.target.value = '';
                 }}
                 className="hidden"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 capture="environment"
               />
             </div>
@@ -697,7 +755,7 @@ const formatDate = (dateString: string) => {
       {selectedTaskIndex !== null && (
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-gradient-to-t from-background-light dark:from-background-dark to-transparent pt-8">
           <button
-            onClick={() => setSelectedTaskIndex(null)}
+            onClick={() => handleLeaveTask(null)}
             className="w-full py-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined">grid_view</span>
@@ -708,21 +766,50 @@ const formatDate = (dateString: string) => {
 
       {/* Image Preview Modal */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
           onClick={() => setSelectedImage(null)}
         >
-          <button 
+          <button
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white"
             onClick={() => setSelectedImage(null)}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
-          <img 
+          <img
             src={selectedImage}
             alt=""
             className="max-w-full max-h-full object-contain"
           />
+        </div>
+      )}
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveConfirm.show && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 mx-auto mb-4">
+              <span className="material-symbols-outlined text-3xl text-orange-500">warning</span>
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2 text-slate-800 dark:text-white">Unsaved Changes</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 text-center mb-6">
+              Please complete the task first, otherwise your changes will not be saved. Do you want to leave anyway?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelLeave}
+                className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                Stay
+              </button>
+              <button
+                onClick={confirmLeave}
+                className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
