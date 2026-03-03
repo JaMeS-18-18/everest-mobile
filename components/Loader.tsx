@@ -24,15 +24,16 @@ const Loader: React.FC<LoaderProps> = ({ text = "Loading...", version = APP_VERS
     return () => observer.disconnect();
   }, []);
 
-  const bg = isDark ? '#181f2a' : '#f7f9fb';
-  const ringBg = isDark ? '#232b3a' : '#e3eaf5';
-  const ringFg = '#2196f3';
-  const capBg = isDark ? '#232b3a' : '#fff';
-  const capFg = '#2196f3';
-  const textColor = isDark ? '#b3c6e0' : '#64748b';
-  const barBg = isDark ? '#232b3a' : '#e3eaf5';
-  const barFg = '#2196f3';
-  const versionColor = isDark ? '#374151' : '#cbd5e1';
+  const primary = '#05abc4';
+  const bg = isDark ? '#0c1418' : '#f0f9fc';
+  const ringBg = isDark ? '#0e5a66' : '#b8eaf2';
+  const ringFg = primary;
+  const capBg = isDark ? '#15202d' : '#fff';
+  const capFg = primary;
+  const textColor = isDark ? '#67d4e8' : '#0495ab';
+  const barBg = isDark ? '#0e5a66' : '#b8eaf2';
+  const barFg = primary;
+  const versionColor = isDark ? '#0e5a66' : '#7dd9e8';
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center relative" style={{ background: bg }}>

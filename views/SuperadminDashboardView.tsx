@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import { toast } from 'react-toastify';
@@ -8,9 +9,27 @@ interface Organization {
   name: string;
   address?: string;
   phone?: string;
+  plan?: 'basic' | 'premium' | 'platinum';
   teacherCount?: number;
   studentCount?: number;
+  groupCount?: number;
   createdAt?: string;
+}
+
+interface PlanOption {
+  id: string;
+  name: string;
+  price: number;
+  studentsMax: number;
+  teachersMax: number;
+  supportTeachersMax: number;
+}
+
+interface GlobalStats {
+  totalOrganizations: number;
+  totalTeachers: number;
+  totalStudents: number;
+  totalGroups?: number;
 }
 
 interface Admin {
@@ -21,7 +40,9 @@ interface Admin {
 }
 
 const SuperadminDashboardView: React.FC = () => {
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({ totalOrganizations: 0, totalTeachers: 0, totalStudents: 0, totalGroups: 0 });
   const [loading, setLoading] = useState(true);
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
@@ -53,6 +74,8 @@ const SuperadminDashboardView: React.FC = () => {
     admins: [] 
   });
   const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,15 +84,24 @@ const SuperadminDashboardView: React.FC = () => {
     fetchOrganizations();
   }, []);
 
+  useEffect(() => {
+    api.get('/organizations/plans').then((r) => {
+      if (r.data?.success && Array.isArray(r.data.data)) setPlans(r.data.data);
+    }).catch(() => {});
+  }, []);
+
   const fetchOrganizations = async () => {
     setLoading(true);
     try {
       const res = await api.get('/organizations');
-      const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      const data = res.data?.data ?? (Array.isArray(res.data) ? res.data : []);
+      const stats = res.data?.stats ?? { totalOrganizations: data.length, totalTeachers: 0, totalStudents: 0, totalGroups: 0 };
       setOrganizations(data);
+      setGlobalStats(stats);
     } catch (err) {
       toast.error('Failed to load organizations');
       setOrganizations([]);
+      setGlobalStats({ totalOrganizations: 0, totalTeachers: 0, totalStudents: 0, totalGroups: 0 });
     } finally {
       setLoading(false);
     }
@@ -189,15 +221,28 @@ const SuperadminDashboardView: React.FC = () => {
     });
   };
 
+  const handleChangePlan = async (orgId: string, plan: string) => {
+    if (!['basic', 'premium', 'platinum'].includes(plan)) return;
+    setUpdatingPlan(orgId);
+    try {
+      await api.patch(`/organizations/${orgId}/plan`, { plan });
+      toast.success('Tariff updated');
+      fetchOrganizations();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update tariff');
+    } finally {
+      setUpdatingPlan(null);
+    }
+  };
+
   // Filter organizations by search
   const filteredOrgs = organizations.filter(org => 
     org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     org.address?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Stats
-  const totalTeachers = organizations.reduce((acc, org) => acc + (org.teacherCount || 0), 0);
-  const totalStudents = organizations.reduce((acc, org) => acc + (org.studentCount || 0), 0);
+  const totalTeachers = globalStats.totalTeachers;
+  const totalStudents = globalStats.totalStudents;
 
   // Avatar colors
   const avatarColors = [
@@ -209,105 +254,107 @@ const SuperadminDashboardView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark transition-colors">
-      {/* Header */}
-      <div className="bg-card-light dark:bg-card-dark shadow-sm sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">
-                Superadmin
-              </h1>
-              <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                Manage organizations
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center"
-                onClick={() => fetchOrganizations()}
-              >
-                <span className="material-symbols-outlined text-xl">refresh</span>
-              </button>
-            </div>
+    <div className="min-h-full transition-colors">
+      {/* Page header - desktop */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+              Superadmin
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Manage organizations
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => fetchOrganizations()}
+            className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary transition-colors shadow-sm"
+          >
+            <span className="material-symbols-outlined text-xl">refresh</span>
+          </button>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pb-24">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm"
-          >
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-2">
-              <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">apartment</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
-              {organizations.length}
-            </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Organizations</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm"
-          >
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mb-2">
-              <span className="material-symbols-outlined text-green-600 dark:text-green-400">school</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
-              {totalTeachers}
-            </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Teachers</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm"
-          >
-            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-2">
-              <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">groups</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
-              {totalStudents}
-            </p>
-            <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Students</p>
-          </motion.div>
-        </div>
-
-        {/* Search & Add */}
-        <div className="mt-6 flex items-center gap-3">
-          <div className="flex-1 relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
-              <span className="material-symbols-outlined text-xl">search</span>
-            </span>
-            <input
-              type="text"
-              placeholder="Search organizations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 pl-11 pr-4 rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-            />
+      {/* Stats Cards - 4 in a row, white, desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+        >
+          <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-3">
+            <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">apartment</span>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowOrgModal(true)}
-            className="h-12 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 transition-colors"
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{globalStats.totalOrganizations}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Organizations</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+        >
+          <div className="w-11 h-11 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mb-3">
+            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">school</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{totalTeachers}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Teachers</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+        >
+          <div className="w-11 h-11 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-3">
+            <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">groups</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{totalStudents}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Students</p>
+        </motion.div>
+        {typeof globalStats.totalGroups === 'number' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
           >
-            <span className="material-symbols-outlined">add</span>
-            <span className="hidden sm:inline">Add</span>
-          </motion.button>
-        </div>
+            <div className="w-11 h-11 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">folder</span>
+            </div>
+            <p className="text-2xl font-bold text-slate-800 dark:text-white">{globalStats.totalGroups}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Groups</p>
+          </motion.div>
+        )}
+      </div>
 
-        {/* Organizations List */}
-        <div className="mt-4 space-y-3">
+      {/* Search & Add - full width desktop */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-1 max-w-2xl relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            <span className="material-symbols-outlined text-xl">search</span>
+          </span>
+          <input
+            type="text"
+            placeholder="Search organizations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-12 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm"
+          />
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowOrgModal(true)}
+          className="h-12 px-6 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold flex items-center gap-2 shadow-md transition-colors"
+        >
+          <span className="material-symbols-outlined">add</span>
+          <span>Add</span>
+        </motion.button>
+      </div>
+
+      {/* Organizations List - desktop cards */}
+        <div className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -343,79 +390,82 @@ const SuperadminDashboardView: React.FC = () => {
                 return (
                   <motion.div
                     key={org._id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-border-light dark:border-border-dark"
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => navigate(`/superadmin/organizations/${org._id}`)}
                   >
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div className={`w-12 h-12 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
-                        {initials}
+                    <div className="flex items-start gap-4">
+                      {/* Avatar - large circle, single initial */}
+                      <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-bold text-xl flex-shrink-0`}>
+                        {(org.name[0] || 'O').toUpperCase()}
                       </div>
-                      
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-text-primary-light dark:text-text-primary-dark truncate">
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg truncate">
                           {org.name}
                         </h3>
-                        
                         {org.address && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className="material-symbols-outlined text-sm text-text-secondary-light dark:text-text-secondary-dark">location_on</span>
-                            <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">
-                              {org.address}
-                            </span>
+                          <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            <span className="material-symbols-outlined text-base">location_on</span>
+                            <span className="truncate">{org.address}</span>
                           </div>
                         )}
-                        
                         {org.phone && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className="material-symbols-outlined text-sm text-text-secondary-light dark:text-text-secondary-dark">call</span>
-                            <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                              {org.phone}
-                            </span>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                            <span className="material-symbols-outlined text-base">call</span>
+                            <span>{org.phone}</span>
                           </div>
                         )}
-
-                        {/* Stats row */}
-                        <div className="flex items-center gap-4 mt-2">
-                          <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm text-blue-500">school</span>
-                            <span className="text-xs font-medium text-text-primary-light dark:text-text-primary-dark">
-                              {org.teacherCount || 0} teachers
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm text-green-500">groups</span>
-                            <span className="text-xs font-medium text-text-primary-light dark:text-text-primary-dark">
-                              {org.studentCount || 0} students
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 dark:text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base text-green-600 dark:text-green-400">school</span>
+                            {org.teacherCount ?? 0} teachers
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base text-purple-500">groups</span>
+                            {org.studentCount ?? 0} students
+                          </span>
+                        </div>
+                        {/* Tariff pill - blue */}
+                        <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-sm text-slate-500 dark:text-slate-400">Tariff:</span>
+                          <select
+                            value={org.plan || 'platinum'}
+                            onChange={(e) => handleChangePlan(org._id, e.target.value)}
+                            disabled={!!updatingPlan}
+                            className="text-sm font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary border-0 cursor-pointer capitalize focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="basic">Basic ($19)</option>
+                            <option value="premium">Premium ($39)</option>
+                            <option value="platinum">Platinum ($59)</option>
+                          </select>
+                          {updatingPlan === org._id && (
+                            <span className="text-xs text-slate-400">...</span>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4">
+                    {/* Action Buttons - Admins (teal outline), Edit (grey), Delete (red) */}
+                    <div className="flex gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => fetchAdmins(org)}
-                        className="flex-1 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-1 transition-colors"
+                        className="flex-1 py-2.5 bg-white dark:bg-slate-800 border-2 border-primary text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
                       >
                         <span className="material-symbols-outlined text-lg">badge</span>
                         Admins
                       </button>
                       <button
                         onClick={() => openEditModal(org)}
-                        className="flex-1 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-medium text-sm flex items-center justify-center gap-1 transition-colors"
+                        className="flex-1 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         <span className="material-symbols-outlined text-lg">edit</span>
                         Edit
                       </button>
                       <button
                         onClick={() => setDeleteModal({ open: true, org })}
-                        className="py-2 px-3 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-xl font-medium text-sm flex items-center justify-center transition-colors"
+                        className="py-2.5 px-4 border-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl font-medium text-sm flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
                         <span className="material-symbols-outlined text-lg">delete</span>
                       </button>
@@ -426,7 +476,6 @@ const SuperadminDashboardView: React.FC = () => {
             </AnimatePresence>
           )}
         </div>
-      </div>
 
       {/* Create/Edit Organization Modal */}
       <AnimatePresence>
@@ -479,7 +528,7 @@ const SuperadminDashboardView: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Everest Academy"
+                      placeholder="e.g. Do HomeWork Academy"
                       value={newOrg.name}
                       onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })}
                       className="w-full h-12 px-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"

@@ -4,6 +4,10 @@ import { UserRole } from './types';
 import LoginView from './views/LoginView';
 import DashboardView from './views/DashboardView';
 import AdminTeachersView from './views/AdminTeachersView';
+import AdminDashboardView from './views/AdminDashboardView';
+import AdminTeacherDetailView from './views/AdminTeacherDetailView';
+import AdminStudentsView from './views/AdminStudentsView';
+import AdminLayout from './components/AdminLayout';
 import GroupsView from './views/GroupsView';
 import GroupDetailView from './views/GroupDetailView';
 import StudentsView from './views/StudentsView';
@@ -25,8 +29,9 @@ import BottomNav from './components/BottomNav';
 import SuperadminBottomNav from './components/SuperadminBottomNav';
 import SuperadminAdminsView from './views/SuperadminAdminsView';
 import 'react-toastify/dist/ReactToastify.css';
-import SnowEffect from './components/SnowEffect';
+import SuperadminLayout from './components/SuperadminLayout';
 import SuperadminDashboardView from './views/SuperadminDashboardView';
+import SuperadminOrgDetailView from './views/SuperadminOrgDetailView';
 import ParentHomeView from './views/ParentHomeView';
 import ParentChildDetailView from './views/ParentChildDetailView';
 import ParentBottomNav from './components/ParentBottomNav';
@@ -80,7 +85,7 @@ const App: React.FC = () => {
     } else if (role === UserRole.TEACHER) {
       navigate('/groups', { replace: true });
     } else if (role === UserRole.ADMIN) {
-      navigate('/admin/teachers', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     } else if (role === UserRole.PARENT) {
       navigate('/parent/home', { replace: true });
     } else if (role === UserRole.SUPPORT_TEACHER) {
@@ -109,9 +114,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto relative bg-background-light dark:bg-background-dark overflow-x-hidden">
-			<SnowEffect/>
-      
+    <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${role === UserRole.SUPERADMIN || role === UserRole.ADMIN ? 'max-w-none w-full bg-[#f0f9fc] dark:bg-slate-900' : 'max-w-md mx-auto bg-background-light dark:bg-background-dark'}`}>
       <div className="flex-1">
         <Routes>
           <Route path="/login" element={<LoginPageWithClearStorage onLogin={handleLogin} />} />
@@ -123,10 +126,21 @@ const App: React.FC = () => {
             <>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/dashboard" element={<DashboardView />} />
-              <Route path="/superadmin/dashboard" element={<SuperadminDashboardView />} />
-              <Route path="/superadmin/admins" element={<SuperadminAdminsView />} />
-              <Route path="/superadmin/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
-              <Route path="/admin/teachers" element={<AdminTeachersView />} />
+              <Route path="/superadmin" element={<SuperadminLayout onLogout={handleLogout} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<SuperadminDashboardView />} />
+              <Route path="organizations/:orgId" element={<SuperadminOrgDetailView />} />
+              <Route path="admins" element={<SuperadminAdminsView />} />
+              <Route path="settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              </Route>
+              <Route path="/admin" element={<AdminLayout onLogout={handleLogout} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboardView />} />
+              <Route path="students" element={<AdminStudentsView />} />
+              <Route path="teachers" element={<AdminTeachersView />} />
+              <Route path="teacher/:teacherId" element={<AdminTeacherDetailView />} />
+              <Route path="settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
+              </Route>
               <Route path="/groups" element={<GroupsView />} />
               <Route path="/groups/:groupId" element={<GroupDetailView />} />
               <Route path="/groups/create" element={<CreateGroupView />} />
@@ -161,9 +175,7 @@ const App: React.FC = () => {
         </Routes>
       </div>
       {/* Always show bottom nav except for login, create student/group, and student homework/submit-homework */}
-      {isLoggedIn && role === UserRole.SUPERADMIN && location.pathname.startsWith('/superadmin') && (
-        <SuperadminBottomNav />
-      )}
+      {/* Superadmin uses desktop layout with sidebar, no bottom nav */}
       {isLoggedIn && role === UserRole.PARENT && location.pathname.startsWith('/parent') && (
         <ParentBottomNav />
       )}

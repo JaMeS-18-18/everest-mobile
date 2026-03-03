@@ -74,6 +74,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   const [editingST, setEditingST] = useState<SupportTeacher | null>(null);
   const [showSTList, setShowSTList] = useState(false);
 
+  // Admin: current organization plan (tariff)
+  const [orgPlan, setOrgPlan] = useState<{ name: string; plan: string } | null>(null);
+
   // Restore dark mode from localStorage on mount
   useEffect(() => {
     const storedDarkMode = localStorage.getItem('darkMode');
@@ -97,6 +100,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
     };
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (role === UserRole.ADMIN) {
+      api.get('/admin/organization')
+        .then((res) => {
+          if (res.data?.success && res.data?.data) {
+            setOrgPlan(res.data.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [role]);
 
   // Fetch groups and support teachers for teacher role
   useEffect(() => {
@@ -363,6 +378,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
           </div>
         </section>
 
+        {role === UserRole.ADMIN && orgPlan && (
+          <section>
+            <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Markaz</h4>
+            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="flex items-center gap-4 px-4 py-3">
+                <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Joriy tarif</p>
+                  <p className="text-xs text-slate-500">{orgPlan.name}</p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-sm font-semibold bg-primary/10 text-primary capitalize">
+                  {orgPlan.plan === 'basic' ? 'Basic' : orgPlan.plan === 'premium' ? 'Premium' : 'Platinum'}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section>
           <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Preferences</h4>
           <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
@@ -449,7 +484,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
           <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Support</h4>
           <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
             <a
-              href="https://t.me/Pluto_18"
+              href="https://t.me/dohomework_support"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"

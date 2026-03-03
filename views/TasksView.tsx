@@ -33,6 +33,7 @@ interface Homework {
   assignmentType: 'group' | 'individual';
   assignments: Assignment[];
   status: 'new' | 'pending' | 'reviewed';
+  effectiveStatus?: 'new' | 'pending' | 'reviewed' | 'overdue';
   submissionStats?: {
     submitted: number;
     reviewed: number;
@@ -65,7 +66,7 @@ const TasksView: React.FC = () => {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'pending' | 'reviewed' | 'overdue'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Pagination state for API
@@ -139,7 +140,7 @@ const TasksView: React.FC = () => {
       
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
       // Send status param for filtering (except 'all' and 'overdue' which are handled client-side)
-      const statusParam = (status && status !== 'all' && status !== 'overdue') ? `&status=${status}` : '';
+      const statusParam = (status && status !== 'all') ? `&status=${status}` : '';
       const response = await api.get(`/homework?page=${page}&limit=5${searchParam}${statusParam}`);
       const data = response.data;
 
@@ -451,10 +452,10 @@ const TasksView: React.FC = () => {
   };
 
 
-  // Helper to determine if homework is overdue
+  // Helper to determine if homework is overdue (deadline passed + all submissions reviewed, or none submitted)
   const isOverdue = (hw: Homework) => {
+    if (hw.effectiveStatus === 'overdue') return true;
     const deadline = new Date(hw.deadline);
-    // Only 'new' status can be overdue. 'pending' (submitted) tasks should not be marked overdue
     return hw.status === 'new' && deadline < new Date();
   };
 

@@ -171,180 +171,169 @@ const AdminTeachersView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark transition-colors">
-      {/* Header */}
-      <div className="bg-card-light dark:bg-card-dark shadow-sm sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">
-                Teachers
-              </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="flex items-center gap-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  {teachers.length} Active Teachers
-                </span>
-                {getOrgName() && (
-                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                    {getOrgName()}
-                  </span>
-                )}
-              </div>
-            </div>
-            <button 
-              onClick={() => fetchTeachers()}
-              className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center"
-            >
-              <span className="material-symbols-outlined">refresh</span>
-            </button>
+    <div className="min-h-screen bg-transparent transition-colors">
+      {/* Header — desktop-friendly */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-text-primary-light dark:text-text-primary-dark">
+            Teachers
+          </h1>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+              <span className="w-2 h-2 bg-green-500 rounded-full" />
+              {teachers.length} Active Teachers
+            </span>
+            {getOrgName() && (
+              <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                {getOrgName()}
+              </span>
+            )}
           </div>
         </div>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 pb-24">
-        {/* Search */}
-        <div className="mt-4 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
-            <span className="material-symbols-outlined">search</span>
-          </span>
-          <input
-            type="text"
-            placeholder="Search teachers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark text-text-primary-light dark:text-text-primary-dark focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-          />
-        </div>
-
-        {/* Teachers List */}
-        <div className="mt-4 space-y-3">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">Loading...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-16"
-            >
-              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-4xl text-slate-400">person_off</span>
-              </div>
-              <p className="text-text-secondary-light dark:text-text-secondary-dark">
-                {search ? 'No teachers found' : 'No teachers yet'}
-              </p>
-            </motion.div>
-          ) : (
-            <AnimatePresence>
-              {filtered.map((teacher, idx) => {
-                const initials = teacher.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                const colorClass = avatarColors[idx % avatarColors.length];
-                
-                return (
-                  <motion.div
-                    key={teacher._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-border-light dark:border-border-dark"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      {teacher.avatar ? (
-                        <img src={teacher.avatar} alt="" className="w-12 h-12 rounded-xl object-cover" />
-                      ) : (
-                        <div className={`w-12 h-12 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
-                          {initials}
-                        </div>
-                      )}
-                      
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-text-primary-light dark:text-text-primary-dark truncate">
-                            {teacher.fullName}
-                          </h3>
-                          {teacher.subject && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-medium rounded-full flex-shrink-0">
-                              {teacher.subject}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">
-                          @{teacher.username}
-                        </p>
-                        {teacher.phone && (
-                          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                            {teacher.phone}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Menu Button */}
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowMenuId(showMenuId === teacher._id ? null : teacher._id);
-                          }}
-                          className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        <AnimatePresence>
-                          {showMenuId === teacher._id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              className="absolute right-0 top-10 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 text-text-primary-light dark:text-text-primary-dark flex items-center gap-2 transition-colors"
-                                onClick={() => openEditModal(teacher)}
-                              >
-                                <span className="material-symbols-outlined text-lg">edit</span>
-                                Edit
-                              </button>
-                              <button
-                                className="w-full px-4 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2 transition-colors"
-                                onClick={() => {
-                                  setShowDelete({ open: true, teacher });
-                                  setShowMenuId(null);
-                                }}
-                              >
-                                <span className="material-symbols-outlined text-lg">delete</span>
-                                Delete
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          )}
-        </div>
-
-        {/* Add Teacher Button */}
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowCreate(true)}
-          className="w-full mt-6 h-14 bg-primary hover:bg-primary-dark text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-colors"
+        <button
+          onClick={() => fetchTeachers()}
+          className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors self-start sm:self-center"
+          aria-label="Yangilash"
         >
-          <span className="material-symbols-outlined">add</span>
-          Add Teacher
-        </motion.button>
+          <span className="material-symbols-outlined">refresh</span>
+        </button>
       </div>
+
+      {/* Search */}
+      <div className="relative mb-6 max-w-2xl">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
+          <span className="material-symbols-outlined">search</span>
+        </span>
+        <input
+          type="text"
+          placeholder="Search teachers..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-text-primary-light dark:text-text-primary-dark placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm"
+        />
+      </div>
+
+      {/* Teachers List — white cards, circular avatar */}
+      <div className="space-y-3 mb-8">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">Loading...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
+          >
+            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-4xl text-slate-400">person_off</span>
+            </div>
+            <p className="text-text-secondary-light dark:text-text-secondary-dark">
+              {search ? 'No teachers found' : 'No teachers yet'}
+            </p>
+          </motion.div>
+        ) : (
+          <AnimatePresence>
+            {filtered.map((teacher, idx) => {
+              const initials = teacher.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <motion.div
+                  key={teacher._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -100 }}
+                  transition={{ delay: idx * 0.04 }}
+                  className="bg-white dark:bg-slate-800 rounded-xl p-4 lg:p-5 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4"
+                >
+                  {/* Avatar — circular, dark blue/primary */}
+                  {teacher.avatar ? (
+                    <img src={teacher.avatar} alt="" className="w-12 h-12 lg:w-14 lg:h-14 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-primary-dark flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {initials}
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-text-primary-light dark:text-text-primary-dark truncate">
+                        {teacher.fullName}
+                      </h3>
+                      {teacher.subject && (
+                        <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full flex-shrink-0">
+                          {teacher.subject}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark truncate">
+                      @{teacher.username}
+                    </p>
+                    {teacher.phone && (
+                      <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                        {teacher.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Menu */}
+                  <div className="relative flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenuId(showMenuId === teacher._id ? null : teacher._id);
+                      }}
+                      className="w-9 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
+                    </button>
+                    <AnimatePresence>
+                      {showMenuId === teacher._id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark flex items-center gap-2 transition-colors text-sm"
+                            onClick={() => openEditModal(teacher)}
+                          >
+                            <span className="material-symbols-outlined text-lg">edit</span>
+                            Edit
+                          </button>
+                          <button
+                            className="w-full px-4 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center gap-2 transition-colors text-sm"
+                            onClick={() => {
+                              setShowDelete({ open: true, teacher });
+                              setShowMenuId(null);
+                            }}
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                            Delete
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
+      </div>
+
+      {/* Add Teacher — teal, prominent */}
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setShowCreate(true)}
+        className="w-full max-w-md lg:max-w-sm h-14 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-colors"
+      >
+        <span className="material-symbols-outlined">add</span>
+        Add Teacher
+      </motion.button>
 
       {/* Create Teacher Modal */}
       <AnimatePresence>

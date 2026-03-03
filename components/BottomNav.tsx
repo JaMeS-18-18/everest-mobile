@@ -32,8 +32,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     { label: 'Settings', icon: 'settings', path: '/settings' },
   ];
   const adminTabs = [
-    { label: 'Home', icon: 'groups', path: '/admin/teachers' },
-    { label: 'Profile', icon: 'person', path: '/settings' },
+    { label: 'Home', icon: 'dashboard', path: '/admin/dashboard' },
+    { label: 'Students', icon: 'school', path: '/admin/students' },
+    { label: 'Profile', icon: 'person', path: '/admin/settings' },
   ];
 
   let tabs = studentTabs;
@@ -77,11 +78,21 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
     if (role === UserRole.STUDENT && tabPath === '/student/schedule') {
       return location.pathname === '/student/schedule';
     }
+    // Admin: dashboard, teachers, teacher detail, settings
+    if (role === UserRole.ADMIN && tabPath === '/admin/dashboard') {
+      return location.pathname === '/admin/dashboard';
+    }
+    if (role === UserRole.ADMIN && tabPath === '/admin/students') {
+      return location.pathname === '/admin/students';
+    }
+    if (role === UserRole.ADMIN && tabPath === '/admin/settings') {
+      return location.pathname === '/admin/settings';
+    }
     return location.pathname === tabPath;
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 pb-safe z-40">
+    <nav className={`fixed bottom-0 left-0 right-0 bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 z-40 ${role === UserRole.ADMIN ? 'max-w-md mx-auto lg:hidden' : 'max-w-md mx-auto'}`}>
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map((tab) => {
           const isActive = isTabActive(tab.path);

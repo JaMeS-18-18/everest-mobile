@@ -2,20 +2,21 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserRole } from '../types';
 import api from '../api';
-import Logo from '../logo.png'
+import Logo from '../logo.jpg'
 // import archaIcon from '../archaIcon.png'
 interface LoginViewProps {
   onLogin: (role: UserRole) => void;
 }
 
-// Check if current domain is Everest/Pluto specific
-const isEverestDomain = () => {
+// Do HomeWork dizayni (localhost va maxsus domenlar uchun)
+const isDoHomeworkDomain = () => {
   const hostname = window.location.hostname.toLowerCase();
-  return hostname.includes('pluto-homework') || 
+  return hostname.includes('pluto-homework') ||
          hostname.includes('everest-homework') ||
          hostname.includes('everest') ||
          hostname.includes('pluto') ||
-         hostname === 'localshost'; // localhost ham Everest dizayn
+         hostname === 'localhost' ||
+         hostname === '127.0.0.1';
 };
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
@@ -173,8 +174,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     }
   };
 
-  // Everest/Pluto dizayni
-  const renderEverestLogin = () => (
+  // Do HomeWork dizayni (logo.jpg ranglari)
+  const renderDoHomeworkLogin = () => (
     <div className="min-h-screen flex flex-col justify-center items-center bg-background-light dark:bg-background-dark overflow-y-hidden transition-colors duration-300">
       <div className="flex flex-col items-center w-full px-4">
         <div className="flex flex-col items-center w-full max-w-md mx-auto">
@@ -185,7 +186,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             className="rounded-3xl shadow-lg bg-card-light dark:bg-card-dark p-6 mb-6 flex items-center justify-center transition-colors duration-300"
             style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.04)' }}
           >
-            <img src={Logo} alt="Everest Logo" className="w-28 h-28 object-contain" />
+            <img src={Logo} alt="Do HomeWork Logo" className="w-28 h-28 object-contain" />
           </motion.div>
            {/* <motion.img
               src={archaIcon}
@@ -214,7 +215,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               transition={{ delay: 0.2, duration: 0.4 }}
               className="text-3xl md:text-2xl font-extrabold text-center mb-2 text-text-primary-light dark:text-text-primary-dark tracking-tight transition-colors duration-300"
             >
-              Pluto Homework
+              Do HomeWork
             </motion.h1>
            
 
@@ -242,11 +243,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             <div className="space-y-2">
               <label className="text-base md:text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">Username</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/80 dark:text-primary/70">
                   <span className="material-symbols-outlined text-[22px] md:text-[18px]">person</span>
                 </span>
                 <input
-                  className="w-full h-14 md:h-12 pl-12 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-[#8ca0c3] dark:placeholder-[#b0bed0]"
+                  className="w-full h-14 md:h-12 pl-12 pr-4 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-text-secondary-light dark:placeholder-text-secondary-dark"
                   placeholder="Enter username"
                   type="text"
                   value={username}
@@ -258,11 +259,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             <div className="space-y-2">
               <label className="text-base md:text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">Password</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/80 dark:text-primary/70">
                   <span className="material-symbols-outlined text-[22px] md:text-[18px]">lock</span>
                 </span>
                 <input
-                  className="w-full h-14 md:h-12 pl-12 pr-12 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-[#8ca0c3] dark:placeholder-[#b0bed0]"
+                  className="w-full h-14 md:h-12 pl-12 pr-12 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark text-lg md:text-base font-medium focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-text-secondary-light dark:placeholder-text-secondary-dark"
                   placeholder="Enter password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -271,7 +272,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8ca0c3] dark:text-[#b0bed0]"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/80 dark:text-primary/70"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <span className="material-symbols-outlined text-[22px] md:text-[18px]">
@@ -303,7 +304,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               type="submit"
               disabled={isLoading || (blockedUntil && Date.now() < blockedUntil)}
               className="w-full h-14 md:h-12 bg-primary hover:bg-primary-dark text-white text-lg md:text-base font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
+              style={{ boxShadow: '0 4px 32px 0 rgba(5,171,196,0.25)' }}
             >
               {isLoading ? (
                 <>
@@ -333,7 +334,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </button>
           </motion.form>
           <div className="w-full flex justify-center mt-4">
-            <span className="text-xs text-slate-400">contact: <a href="https://t.me/Pluto_18" target="_blank" rel="noopener noreferrer" className="underline">@Pluto_18</a></span>
+            <span className="text-xs text-slate-400">contact: <a href="https://t.me/dohomework_support" target="_blank" rel="noopener noreferrer" className="underline">@dohomework_support</a></span>
           </div>
         </div>
       </div>
@@ -373,7 +374,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             transition={{ delay: 0.15, duration: 0.4 }}
             className="text-3xl font-extrabold text-center mb-2 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-white dark:via-slate-200 dark:to-white bg-clip-text text-transparent"
           >
-            Homework Exchange
+            Do HomeWork
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -512,7 +513,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             className="mt-8 text-center"
           >
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              © 2026 <span className="text-primary font-semibold">Homework Exchange</span>
+              © 2026 <span className="text-primary font-semibold">Do HomeWork</span>
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">All rights reserved</p>
           </motion.div>
@@ -522,7 +523,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   );
 
   // Domen nomiga qarab dizayn tanlash
-  return isEverestDomain() ? renderEverestLogin() : renderGenericLogin();
+  return isDoHomeworkDomain() ? renderDoHomeworkLogin() : renderGenericLogin();
 };
 
 export default LoginView;

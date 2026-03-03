@@ -82,8 +82,7 @@ const TeacherScheduleView: React.FC = () => {
   };
 
   const getGroupColor = (index: number) => {
-    // Faqat ko'k rang
-    return { bg: 'bg-blue-500', light: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' };
+    return { bg: 'bg-primary', light: 'bg-primary/10 dark:bg-primary/20', text: 'text-primary dark:text-primary' };
   };
 
   const getClassesForDay = (dayIndex: number) => {
@@ -209,11 +208,11 @@ const TeacherScheduleView: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-4 pt-12 pb-6 rounded-b-3xl">
+      <div className="bg-gradient-to-br from-primary to-primary-dark text-white p-4 pt-12 pb-6 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold">My Schedule</h1>
-            <p className="text-blue-100 text-sm">{groups.length} groups</p>
+            <p className="text-white/80 text-sm">{groups.length} groups</p>
           </div>
           <button
             onClick={handleAddPractice}
@@ -240,20 +239,20 @@ const TeacherScheduleView: React.FC = () => {
                 onClick={() => setSelectedDayIndex(index)}
                 className={`flex flex-col items-center min-w-[52px] py-2 px-3 rounded-xl transition-all ${
                   selected
-                    ? 'bg-white text-blue-600 shadow-lg'
+                    ? 'bg-white text-primary shadow-lg'
                     : today
                     ? 'bg-white/30 text-white'
                     : 'bg-white/10 text-white/80'
                 }`}
               >
                 <span className="text-xs font-medium">{day}</span>
-                <span className={`text-lg font-bold ${selected ? 'text-blue-600' : ''}`}>
+                <span className={`text-lg font-bold ${selected ? 'text-primary' : ''}`}>
                   {date.getDate()}
                 </span>
                 {hasClasses && (
                   <div className="flex gap-0.5 mt-1">
                     {regularClasses > 0 && (
-                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-blue-500' : 'bg-white'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-primary' : 'bg-white'}`} />
                     )}
                     {practices > 0 && (
                       <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-orange-500' : 'bg-orange-300'}`} />
@@ -542,9 +541,9 @@ const TeacherScheduleView: React.FC = () => {
                   onClick={() => setSelectedDayIndex(index)}
                   className={`py-2 rounded-lg transition-all ${
                     selected
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-primary text-white'
                       : today
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      ? 'bg-primary/10 dark:bg-primary/20 text-primary'
                       : hasClasses
                       ? 'bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                       : 'text-slate-400'

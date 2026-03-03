@@ -400,7 +400,7 @@ export default function StudentAppointmentView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -632,7 +632,7 @@ export default function StudentAppointmentView() {
                 <>
                   {loadingSlots ? (
                     <div className="flex flex-col items-center justify-center py-8 bg-gray-50 rounded-xl">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-3"></div>
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-3"></div>
                       <p className="text-gray-500 text-sm">Loading available times...</p>
                     </div>
                   ) : availableRanges.length > 0 ? (

@@ -4,14 +4,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const navItems = [
   {
     label: 'Organizations',
-    icon: 'business',
+    icon: 'apartment',
     path: '/superadmin/dashboard',
   },
-  // {
-  //   label: 'Admins',
-  //   icon: 'supervisor_account',
-  //   path: '/superadmin/admins',
-  // },
+  {
+    label: 'Admins',
+    icon: 'badge',
+    path: '/superadmin/admins',
+  },
   {
     label: 'Settings',
     icon: 'settings',
@@ -24,10 +24,12 @@ const SuperadminBottomNav: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 pb-safe z-40">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 z-40">
       <div className="flex justify-around items-center h-16 px-2">
         {navItems.map(item => {
-          const isActive = location.pathname === item.path;
+          const isActive = item.path === '/superadmin/admins'
+            ? location.pathname.startsWith('/superadmin/admins')
+            : location.pathname === item.path;
           return (
             <button
               key={item.path}
