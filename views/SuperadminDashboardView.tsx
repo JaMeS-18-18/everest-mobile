@@ -269,7 +269,7 @@ const SuperadminDashboardView: React.FC = () => {
           <button
             type="button"
             onClick={() => fetchOrganizations()}
-            className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary transition-colors shadow-sm"
+            className="w-10 h-10 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-xl">refresh</span>
           </button>
@@ -281,7 +281,7 @@ const SuperadminDashboardView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+          className="bg-white dark:bg-card-dark rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-border-dark"
         >
           <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">apartment</span>
@@ -293,7 +293,7 @@ const SuperadminDashboardView: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+          className="bg-white dark:bg-card-dark rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-border-dark"
         >
           <div className="w-11 h-11 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">school</span>
@@ -305,7 +305,7 @@ const SuperadminDashboardView: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+          className="bg-white dark:bg-card-dark rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-border-dark"
         >
           <div className="w-11 h-11 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">groups</span>
@@ -318,7 +318,7 @@ const SuperadminDashboardView: React.FC = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700"
+            className="bg-white dark:bg-card-dark rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-border-dark"
           >
             <div className="w-11 h-11 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">folder</span>
@@ -340,7 +340,7 @@ const SuperadminDashboardView: React.FC = () => {
             placeholder="Search organizations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm"
+            className="w-full h-12 pl-12 pr-4 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark text-slate-800 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm"
           />
         </div>
         <motion.button
@@ -366,7 +366,7 @@ const SuperadminDashboardView: React.FC = () => {
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-16"
             >
-              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+              <div className="w-20 h-20 bg-slate-100 dark:bg-card-dark rounded-full flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-4xl text-slate-400">domain_disabled</span>
               </div>
               <p className="text-text-secondary-light dark:text-text-secondary-dark">
@@ -394,7 +394,7 @@ const SuperadminDashboardView: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ delay: idx * 0.03 }}
-                    className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md transition-shadow"
+                    className="bg-white dark:bg-card-dark rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-border-dark cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => navigate(`/superadmin/organizations/${org._id}`)}
                   >
                     <div className="flex items-start gap-4">
@@ -448,17 +448,17 @@ const SuperadminDashboardView: React.FC = () => {
                       </div>
                     </div>
                     {/* Action Buttons - Admins (teal outline), Edit (grey), Delete (red) */}
-                    <div className="flex gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-border-dark" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => fetchAdmins(org)}
-                        className="flex-1 py-2.5 bg-white dark:bg-slate-800 border-2 border-primary text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
+                        className="flex-1 py-2.5 bg-white dark:bg-card-dark border-2 border-primary text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
                       >
                         <span className="material-symbols-outlined text-lg">badge</span>
                         Admins
                       </button>
                       <button
                         onClick={() => openEditModal(org)}
-                        className="flex-1 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        className="flex-1 py-2.5 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-card-dark/90 transition-colors"
                       >
                         <span className="material-symbols-outlined text-lg">edit</span>
                         Edit
@@ -628,7 +628,7 @@ const SuperadminDashboardView: React.FC = () => {
               <div className="sticky bottom-0 bg-card-light dark:bg-card-dark p-4 border-t border-border-light dark:border-border-dark flex gap-3">
                 <button
                   onClick={closeOrgModal}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-card-dark hover:bg-slate-200 dark:hover:bg-card-dark/90 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
                 >
                   Cancel
                 </button>
@@ -689,7 +689,7 @@ const SuperadminDashboardView: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setDeleteModal({ open: false, org: null })}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-card-dark hover:bg-slate-200 dark:hover:bg-card-dark/90 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
                 >
                   Cancel
                 </button>
@@ -752,7 +752,7 @@ const SuperadminDashboardView: React.FC = () => {
                   </div>
                 ) : adminsModal.admins.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-card-dark rounded-full flex items-center justify-center mb-3">
                       <span className="material-symbols-outlined text-3xl text-slate-400">person_off</span>
                     </div>
                     <p className="text-text-secondary-light dark:text-text-secondary-dark">No admins found</p>
@@ -790,7 +790,7 @@ const SuperadminDashboardView: React.FC = () => {
               <div className="p-4 border-t border-border-light dark:border-border-dark">
                 <button
                   onClick={() => setAdminsModal({ open: false, org: null, admins: [] })}
-                  className="w-full h-11 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                  className="w-full h-11 bg-slate-100 dark:bg-card-dark hover:bg-slate-200 dark:hover:bg-card-dark/90 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
                 >
                   Close
                 </button>

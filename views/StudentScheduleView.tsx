@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import Loader from '@/components/Loader';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface GroupSchedule {
   _id: string;
@@ -26,7 +27,11 @@ interface PracticeLesson {
   description: string;
 }
 
+const WEEK_DAY_KEYS = ['schedule_mon', 'schedule_tue', 'schedule_wed', 'schedule_thu', 'schedule_fri', 'schedule_sat', 'schedule_sun'] as const;
+const FULL_DAY_KEYS = ['schedule_monday', 'schedule_tuesday', 'schedule_wednesday', 'schedule_thursday', 'schedule_friday', 'schedule_saturday', 'schedule_sunday'] as const;
+
 const StudentScheduleView: React.FC = () => {
+  const t = useTranslation();
   const [groups, setGroups] = useState<GroupSchedule[]>([]);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [practiceLessons, setPracticeLessons] = useState<PracticeLesson[]>([]);
@@ -88,8 +93,8 @@ const StudentScheduleView: React.FC = () => {
     }
   };
 
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const weekDays = WEEK_DAY_KEYS.map(k => t(k));
+  const fullDayNames = FULL_DAY_KEYS.map(k => t(k));
 
   // Get current day index (Mon=0)
   const getCurrentDayIndex = () => {
@@ -105,15 +110,15 @@ const StudentScheduleView: React.FC = () => {
     return hours * 60 + minutes;
   };
 
-  // Get group color based on index
+  // Get group color based on index (primary theme)
   const getGroupColor = (index: number) => {
-    // Faqat ko'k rang
-    return { bg: 'bg-blue-500', light: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-500' };
+    return { bg: 'bg-primary', light: 'bg-primary/10 dark:bg-primary/20', text: 'text-primary', border: 'border-primary' };
   };
 
-  // Get classes for selected day
+  // Get classes for selected day (dayName from English for API match)
+  const fullDayNamesEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const getClassesForDay = (dayIndex: number) => {
-    const dayName = fullDayNames[dayIndex];
+    const dayName = fullDayNamesEn[dayIndex];
     return groups
       .filter(group => group.daysOfWeek.includes(dayName))
       .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
@@ -209,21 +214,21 @@ const StudentScheduleView: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-5xl text-orange-500 mb-3">calendar_month</span>
         <p className="text-orange-500 text-center font-semibold mb-2">{error}</p>
-        <p className="text-slate-500 text-sm text-center mb-4">Please contact your teacher</p>
+        <p className="text-slate-500 text-sm text-center mb-4">{t('schedule_contact_teacher')}</p>
         <button
           onClick={fetchSchedule}
           className="px-6 py-3 bg-primary text-white rounded-xl font-medium"
         >
-          Retry
+          {t('schedule_retry')}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-background-dark pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-4 pt-12 pb-6 rounded-b-3xl">
+      <div className="bg-gradient-to-br from-primary to-primary/90 text-white p-4 pt-12 pb-6 rounded-b-3xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
             {teacher?.profileImage ? (
@@ -237,9 +242,9 @@ const StudentScheduleView: React.FC = () => {
             )}
           </div>
           <div>
-            <h1 className="text-xl font-bold">My Schedule</h1>
-            <p className="text-blue-100 text-sm">
-              <span className="opacity-70">Teacher:</span> {teacher?.fullName || 'Not assigned'}
+            <h1 className="text-xl font-bold">{t('schedule_my_schedule')}</h1>
+            <p className="text-white/90 text-sm">
+              <span className="opacity-70">{t('schedule_teacher')}</span> {teacher?.fullName || t('schedule_not_assigned')}
             </p>
           </div>
         </div>
@@ -260,20 +265,20 @@ const StudentScheduleView: React.FC = () => {
                 onClick={() => setSelectedDayIndex(index)}
                 className={`flex flex-col items-center min-w-[52px] py-2 px-3 rounded-xl transition-all ${
                   selected
-                    ? 'bg-white text-blue-600 shadow-lg'
+                    ? 'bg-white text-primary shadow-lg'
                     : today
                     ? 'bg-white/30 text-white'
                     : 'bg-white/10 text-white/80'
                 }`}
               >
                 <span className="text-xs font-medium">{day}</span>
-                <span className={`text-lg font-bold ${selected ? 'text-blue-600' : ''}`}>
+                <span className={`text-lg font-bold ${selected ? 'text-primary' : ''}`}>
                   {date.getDate()}
                 </span>
                 {hasClasses && (
                   <div className="flex gap-0.5 mt-1">
                     {regularClasses > 0 && (
-                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-blue-500' : 'bg-white'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-primary' : 'bg-white'}`} />
                     )}
                     {practices > 0 && (
                       <div className={`w-1.5 h-1.5 rounded-full ${selected ? 'bg-orange-500' : 'bg-orange-300'}`} />
@@ -294,7 +299,7 @@ const StudentScheduleView: React.FC = () => {
               {fullDayNames[selectedDayIndex]}
               {isToday(selectedDayIndex) && (
                 <span className="ml-2 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
-                  Today
+                  {t('schedule_today')}
                 </span>
               )}
             </h2>
@@ -307,15 +312,15 @@ const StudentScheduleView: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+            <div className="bg-slate-100 dark:bg-card-dark px-3 py-1 rounded-full">
               <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {classesForSelectedDay.length} {classesForSelectedDay.length === 1 ? 'class' : 'classes'}
+                {classesForSelectedDay.length} {classesForSelectedDay.length === 1 ? t('schedule_class') : t('schedule_classes')}
               </span>
             </div>
             {practicesForSelectedDay.length > 0 && (
               <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
                 <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
-                  {practicesForSelectedDay.length} practice
+                  {practicesForSelectedDay.length} {t('schedule_practice_count')}
                 </span>
               </div>
             )}
@@ -326,15 +331,15 @@ const StudentScheduleView: React.FC = () => {
       {/* Classes List */}
       <div className="px-4 space-y-3">
         {classesForSelectedDay.length === 0 && practicesForSelectedDay.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center">
+          <div className="bg-white dark:bg-card-dark rounded-2xl p-8 text-center">
             <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">
               beach_access
             </span>
             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              No Classes
+              {t('schedule_no_classes')}
             </h3>
             <p className="text-slate-500 text-sm">
-              Enjoy your free day! 🎉
+              {t('schedule_free_day')}
             </p>
           </div>
         ) : (
@@ -356,7 +361,7 @@ const StudentScheduleView: React.FC = () => {
             return (
               <div
                 key={group._id}
-                className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 ${
+                className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-border-dark ${
                   active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
                 }`}
               >
@@ -375,17 +380,17 @@ const StudentScheduleView: React.FC = () => {
                           {active && (
                             <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                              Now
+                              {t('schedule_now')}
                             </span>
                           )}
                           {upcoming && (
                             <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
-                              Soon
+                              {t('schedule_soon')}
                             </span>
                           )}
                           {ended && (
-                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
-                              Done
+                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-card-dark/80 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                              {t('schedule_done')}
                             </span>
                           )}
                         </div>
@@ -419,18 +424,18 @@ const StudentScheduleView: React.FC = () => {
                     {active && (
                       <div className="mt-3">
                         <div className="flex justify-between text-xs text-slate-500 mb-1">
-                          <span>In progress</span>
+                          <span>{t('schedule_in_progress')}</span>
                           <span>
                             {(() => {
                               const now = new Date();
                               const currentMinutes = now.getHours() * 60 + now.getMinutes();
                               const endMinutes = timeToMinutes(group.endTime);
                               const remaining = endMinutes - currentMinutes;
-                              return `${remaining} min left`;
+                              return `${remaining} ${t('schedule_min_left')}`;
                             })()}
                           </span>
                         </div>
-                        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-slate-100 dark:bg-card-dark/80 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-green-500 rounded-full transition-all"
                             style={{
@@ -470,7 +475,7 @@ const StudentScheduleView: React.FC = () => {
             return (
               <div
                 key={practice._id}
-                className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border-2 border-dashed border-orange-300 dark:border-orange-700 ${
+                className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden shadow-sm border-2 border-dashed border-orange-300 dark:border-orange-700 ${
                   active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
                 }`}
               >
@@ -481,22 +486,22 @@ const StudentScheduleView: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
-                            Practice
+                            {t('schedule_practice')}
                           </span>
                           {active && (
                             <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                              Now
+                              {t('schedule_now')}
                             </span>
                           )}
                           {upcoming && (
                             <span className="text-xs font-medium bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">
-                              Soon
+                              {t('schedule_soon')}
                             </span>
                           )}
                           {ended && (
-                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
-                              Done
+                            <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-card-dark/80 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                              {t('schedule_done')}
                             </span>
                           )}
                         </div>
@@ -539,9 +544,9 @@ const StudentScheduleView: React.FC = () => {
       {/* All Days Overview */}
       <div className="px-4 mt-6">
         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
-          Week Overview
+          {t('schedule_week_overview')}
         </h3>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+        <div className="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-border-dark">
           <div className="grid grid-cols-7 gap-1 text-center">
             {weekDays.map((day, index) => {
               const classes = getClassesForDay(index);
@@ -556,11 +561,11 @@ const StudentScheduleView: React.FC = () => {
                   onClick={() => setSelectedDayIndex(index)}
                   className={`py-2 rounded-lg transition-all ${
                     selected
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-primary text-white'
                       : today
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      ? 'bg-primary/10 dark:bg-primary/20 text-primary'
                       : hasClasses
-                      ? 'bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      ? 'bg-slate-50 dark:bg-card-dark/80 text-slate-700 dark:text-slate-300'
                       : 'text-slate-400'
                   }`}
                 >

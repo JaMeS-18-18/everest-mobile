@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import Loader from '@/components/Loader';
 import StudentProgressCircle from '@/components/StudentProgressCircle';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface RankingStudent {
   _id: string;
@@ -30,6 +31,7 @@ interface RankingData {
 }
 
 const StudentRankingView: React.FC = () => {
+  const t = useTranslation();
   const [rankingData, setRankingData] = useState<RankingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,17 +86,16 @@ const StudentRankingView: React.FC = () => {
 
       if (data.success) {
         if (data.noGroup) {
-          // Student not assigned to any group yet
-          setError(data.message || 'Siz hali guruhga biriktirilmagansiz');
+          setError(data.message || t('ranking_no_group'));
         } else {
           setRankingData(data.data);
           setError(null);
         }
       } else {
-        throw new Error(data.message || 'Failed to fetch ranking data');
+        throw new Error(data.message || t('ranking_error_fetch'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch ranking data');
+      setError(err instanceof Error ? err.message : t('ranking_error_fetch'));
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +120,7 @@ const StudentRankingView: React.FC = () => {
     const end = new Date(deadline);
     const diff = end.getTime() - now.getTime();
 
-    if (diff <= 0) return 'Ended';
+    if (diff <= 0) return t('ranking_ended');
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -139,12 +140,12 @@ const StudentRankingView: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-orange-500 mb-2">groups</span>
         <p className="text-orange-500 text-center font-semibold mb-2">{error}</p>
-        <p className="text-slate-500 text-sm text-center mb-4">Please contact your teacher to be assigned to a group</p>
+        <p className="text-slate-500 text-sm text-center mb-4">{t('ranking_contact_teacher')}</p>
         <button
           onClick={fetchRankingData}
           className="px-4 py-2 bg-primary text-white rounded-lg"
         >
-          Retry
+          {t('ranking_retry')}
         </button>
       </div>
     );
@@ -154,7 +155,7 @@ const StudentRankingView: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">leaderboard</span>
-        <p className="text-slate-500">No ranking data available</p>
+        <p className="text-slate-500">{t('ranking_no_data')}</p>
       </div>
     );
   }
@@ -163,20 +164,21 @@ const StudentRankingView: React.FC = () => {
   const topPercentage = Math.round((currentStudent.rank / currentStudent.totalStudents) * 100);
 
   // Calculate status from percentage
-  const getStatusFromPercent = (percent: number): 'Worse' | 'Bad' | 'Good' | 'Better' | 'Perfect' => {
-    if (percent >= 90) return 'Perfect';
-    if (percent >= 70) return 'Better';
-    if (percent >= 50) return 'Good';
-    if (percent >= 30) return 'Bad';
-    return 'Worse';
+  const getStatusFromPercent = (percent: number): 'ranking_status_worse' | 'ranking_status_bad' | 'ranking_status_good' | 'ranking_status_better' | 'ranking_status_perfect' => {
+    if (percent >= 90) return 'ranking_status_perfect';
+    if (percent >= 70) return 'ranking_status_better';
+    if (percent >= 50) return 'ranking_status_good';
+    if (percent >= 30) return 'ranking_status_bad';
+    return 'ranking_status_worse';
   };
 
-  const currentStatus = getStatusFromPercent(currentStudent.percentage);
+  const currentStatusKey = getStatusFromPercent(currentStudent.percentage);
+  const currentStatusLabel = t(currentStatusKey);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-background-dark">
       {/* Header */}
-      {/* <div className="p-4 pt-12 bg-white dark:bg-slate-800">
+      {/* <div className="p-4 pt-12 bg-white dark:bg-card-dark">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
             {user?.profileImage ? (
@@ -198,13 +200,13 @@ const StudentRankingView: React.FC = () => {
 
       {/* Standing Section */}
       <div className="flex-1 overflow-y-auto pb-24">
-        <div className="bg-white dark:bg-slate-800 p-6">
+        <div className="bg-white dark:bg-card-dark p-6">
           {/* Time Period Filter */}
           <div className="flex gap-2 justify-center mb-6">
             {[
-              { key: 'weekly', label: 'Weekly' },
-              { key: 'monthly', label: 'Monthly' },
-              { key: 'yearly', label: 'Yearly' }
+              { key: 'weekly', labelKey: 'ranking_weekly' },
+              { key: 'monthly', labelKey: 'ranking_monthly' },
+              { key: 'yearly', labelKey: 'ranking_yearly' }
             ].map((period) => (
               <button
                 key={period.key}
@@ -212,17 +214,17 @@ const StudentRankingView: React.FC = () => {
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   timePeriod === period.key
                     ? 'bg-primary text-white shadow-md'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                    : 'bg-slate-200 dark:bg-card-dark/80 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                {period.label}
+                {t(period.labelKey)}
               </button>
             ))}
           </div>
 
           {/* Period Date Label */}
           <div className="text-center mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-card-dark/80 rounded-full text-sm text-slate-600 dark:text-slate-300">
               <span className="material-symbols-outlined text-base">calendar_month</span>
               {getPeriodLabel()}
             </span>
@@ -231,27 +233,27 @@ const StudentRankingView: React.FC = () => {
           <div className="text-center mb-2">
             <h1 className="text-4xl font-black mb-1">
               {currentStudent.rank}
-              <span className="text-2xl align-super">{getRankSuffix(currentStudent.rank)}</span> Place
+              <span className="text-2xl align-super">{getRankSuffix(currentStudent.rank)}</span> {t('ranking_place')}
             </h1>
-            <p className="text-slate-500 font-medium">Top {topPercentage}% of your class</p>
+            <p className="text-slate-500 font-medium">{t('ranking_top_percent').replace('{percent}', String(topPercentage))}</p>
           </div>
 
           {/* Progress Circle */}
           <div className="flex justify-center my-8">
             <StudentProgressCircle 
               percent={currentStudent.percentage}
-              label={currentStatus}
+              label={currentStatusLabel}
               delta={0}
-              status={currentStatus}
+              status={currentStatusLabel}
             />
           </div>
 
           {/* Monthly Reward Banner for Rank 1 */}
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-full">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-card-dark/80 rounded-full">
               <span className="text-2xl">{getEmojiForRank(currentStudent.rank)}</span>
               <span className="font-bold text-slate-700 dark:text-slate-300">
-                {currentStudent.points} Points
+                {currentStudent.points} {t('ranking_points')}
               </span>
             </div>
           </div>
@@ -260,7 +262,7 @@ const StudentRankingView: React.FC = () => {
         {/* Top Students Section */}
         <div className="p-4 mt-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Top Students</h2>
+            <h2 className="text-xl font-bold">{t('ranking_top_students')}</h2>
             <div className="text-sm font-semibold text-slate-500">{currentStudent.groupName}</div>
           </div>
 
@@ -277,7 +279,7 @@ const StudentRankingView: React.FC = () => {
                     ? 'bg-gradient-to-r from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 border-2 border-orange-300 dark:border-orange-600'
                     : student.isCurrentUser
                     ? 'bg-primary/10 border-2 border-primary'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                    : 'bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark'
                 }`}
               >
                 <div className={`text-2xl font-bold w-8 ${
@@ -289,7 +291,7 @@ const StudentRankingView: React.FC = () => {
                   {student.rank}
                 </div>
 
-                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-card-dark/80 flex items-center justify-center overflow-hidden">
                   {student.profileImage ? (
                     <img
                       src={getProfileImageUrl(student.profileImage)}
@@ -307,10 +309,10 @@ const StudentRankingView: React.FC = () => {
                   <div className="font-semibold">
                     {student.fullName}
                     {student.isCurrentUser && (
-                      <span className="text-xs text-primary ml-1">(You)</span>
+                      <span className="text-xs text-primary ml-1">{t('ranking_you')}</span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-500">{student.points} Points</div>
+                  <div className="text-sm text-slate-500">{student.points} {t('ranking_points')}</div>
                 </div>
 
                 <div className="text-2xl">
@@ -354,7 +356,7 @@ const StudentRankingView: React.FC = () => {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsRewardModalOpen(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl p-6 animate-slide-up">
+          <div className="relative w-full max-w-md bg-white dark:bg-card-dark rounded-2xl p-6 animate-slide-up">
             <button 
               onClick={() => setIsRewardModalOpen(false)}
               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -366,15 +368,14 @@ const StudentRankingView: React.FC = () => {
               <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-[32px]">emoji_events</span>
               </div>
-              <h2 className="text-2xl font-bold mb-1">Monthly Reward</h2>
-              <p className="text-sm text-slate-500">Be #1 to win this prize!</p>
+              <h2 className="text-2xl font-bold mb-1">{t('ranking_monthly_reward')}</h2>
+              <p className="text-sm text-slate-500">{t('ranking_win_prize')}</p>
               
-              {/* Countdown Timer */}
               {rankingData.monthlyReward.deadline && (
                 <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 rounded-full">
                   <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-[18px]">schedule</span>
                   <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                    {getTimeRemaining(rankingData.monthlyReward.deadline)} remaining
+                    {getTimeRemaining(rankingData.monthlyReward.deadline)} {t('ranking_remaining')}
                   </span>
                 </div>
               )}
@@ -391,7 +392,7 @@ const StudentRankingView: React.FC = () => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                <p className="text-xs text-center text-slate-500 mt-2">Click to view full size</p>
+                <p className="text-xs text-center text-slate-500 mt-2">{t('ranking_click_full')}</p>
               </div>
             )}
 
@@ -404,7 +405,7 @@ const StudentRankingView: React.FC = () => {
 
             <div className="p-4 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
               <p className="text-sm font-medium text-purple-900 dark:text-purple-200 text-center">
-                🏆 Finish this month as the top student to win!
+                🏆 {t('ranking_finish_top')}
               </p>
             </div>
           </div>

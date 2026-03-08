@@ -54,9 +54,11 @@ interface Homework {
 
 import { useNavigate } from 'react-router-dom';
 import Loader from '@/components/Loader';
+import { useTranslation } from '../contexts/LanguageContext';
 
 const StudentHomeView: React.FC = () => {
   const navigate = useNavigate();
+  const t = useTranslation();
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,9 +128,9 @@ const StudentHomeView: React.FC = () => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return t('student_greeting_morning');
+    if (hour < 17) return t('student_greeting_afternoon');
+    return t('student_greeting_evening');
   };
 
   const getCategoryIcon = (category: string) => {
@@ -190,7 +192,7 @@ const StudentHomeView: React.FC = () => {
           onClick={fetchMyHomeworks}
           className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
         >
-          Retry
+          {t('student_retry')}
         </button>
       </div>
     );
@@ -219,7 +221,7 @@ const StudentHomeView: React.FC = () => {
             <div className="flex flex-col">
               <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
               <div className='flex'>
-                <span className="text-lg font-bold">{user.fullName || 'Student'}</span>
+                <span className="text-lg font-bold">{user.fullName || t('student_fallback')}</span>
                 {/* <motion.img
                   src={archaIcon}
                   alt="archa"
@@ -249,52 +251,62 @@ const StudentHomeView: React.FC = () => {
               )}
             </div>
           </div>
-          <button
-            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined text-slate-500">notifications</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+              aria-label="Sozlamalar"
+            >
+              <span className="material-symbols-outlined text-slate-500">settings</span>
+            </button>
+            <button
+              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+              aria-label="Bildirishnomalar"
+            >
+              <span className="material-symbols-outlined text-slate-500">notifications</span>
+            </button>
+          </div>
         </div>
 
-        <h1 className="text-[28px] font-bold tracking-tight mb-4">My Homeworks</h1>
+        <h1 className="text-[28px] font-bold tracking-tight mb-4">{t('student_my_homeworks')}</h1>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 border border-orange-100 dark:border-orange-800">
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-orange-500 text-lg">pending_actions</span>
-              <span className="text-xs text-orange-600 font-medium">Pending</span>
+              <span className="text-xs text-orange-600 font-medium">{t('student_pending')}</span>
             </div>
             <span className="text-xl font-bold text-orange-600">{pendingCount}</span>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 border border-blue-100 dark:border-blue-800">
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-blue-500 text-lg">schedule_send</span>
-              <span className="text-xs text-blue-600 font-medium">Submitted</span>
+              <span className="text-xs text-blue-600 font-medium">{t('student_submitted')}</span>
             </div>
             <span className="text-xl font-bold text-blue-600">{submittedCount}</span>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 border border-green-100 dark:border-green-800">
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-green-500 text-lg">task_alt</span>
-              <span className="text-xs text-green-600 font-medium">Graded</span>
+              <span className="text-xs text-green-600 font-medium">{t('student_graded')}</span>
             </div>
             <span className="text-xl font-bold text-green-600">{gradedCount}</span>
           </div>
         </div>
 
-        {/* Book Appointment Button */}
+        {/* Additional classes with assistant teacher */}
         <button
           onClick={() => navigate('/student/appointment')}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-between shadow-lg"
+          className="w-full mb-4 p-4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl flex items-center justify-between shadow-lg"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <span className="material-symbols-outlined text-white">event_available</span>
             </div>
             <div className="text-left">
-              <p className="text-white font-bold">Book Appointment</p>
-              <p className="text-white/70 text-xs">With Support Teacher</p>
+              <p className="text-white font-bold">{t('student_book_appointment')}</p>
+              <p className="text-white/70 text-xs">{t('student_with_support_teacher')}</p>
             </div>
           </div>
           <span className="material-symbols-outlined text-white">arrow_forward_ios</span>
@@ -303,11 +315,11 @@ const StudentHomeView: React.FC = () => {
         {/* Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
           {[
-            { key: 'all', label: 'All' },
-            { key: 'pending', label: 'Pending' },
-            { key: 'submitted', label: 'Submitted' },
-            { key: 'graded', label: 'Graded' },
-            { key: 'overdue', label: 'Overdue' },
+            { key: 'all', labelKey: 'student_all' },
+            { key: 'pending', labelKey: 'student_pending' },
+            { key: 'submitted', labelKey: 'student_submitted' },
+            { key: 'graded', labelKey: 'student_graded' },
+            { key: 'overdue', labelKey: 'student_overdue' },
           ].map((filter) => (
             <button
               key={filter.key}
@@ -317,7 +329,7 @@ const StudentHomeView: React.FC = () => {
                 : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
                 }`}
             >
-              {filter.label}
+              {t(filter.labelKey)}
             </button>
           ))}
         </div>
@@ -328,7 +340,7 @@ const StudentHomeView: React.FC = () => {
         {filteredHomeworks.length === 0 ? (
           <div className="text-center py-12">
             <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">assignment</span>
-            <p className="text-slate-500">No homework found</p>
+            <p className="text-slate-500">{t('student_no_homework')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -416,7 +428,7 @@ const StudentHomeView: React.FC = () => {
                               ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
                               : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
                           }`}>
-                          {isGraded ? (statusVal || 'Graded') : hwStatus === 'submitted' ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
+                          {isGraded ? (statusVal || t('student_graded')) : hwStatus === 'submitted' ? t('student_submitted') : overdue ? t('student_overdue') : t('student_pending')}
                         </span>
                         {isGraded && points > 0 && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary flex items-center gap-0.5">
@@ -438,7 +450,7 @@ const StudentHomeView: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">person</span>
-                          <span>{homework.teacherId?.fullName || 'Teacher'}</span>
+                          <span>{homework.teacherId?.fullName || t('student_teacher_fallback')}</span>
                         </div>
                       </div>
                     </div>
@@ -464,7 +476,7 @@ const StudentHomeView: React.FC = () => {
                   {homework.submitted && homework.submittedAt && (
                     <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">check</span>
-                      Submitted on {formatDateTime(homework.submittedAt)}
+                      {t('student_submitted_on')} {formatDateTime(homework.submittedAt)}
                     </div>
                   )}
                 </div>

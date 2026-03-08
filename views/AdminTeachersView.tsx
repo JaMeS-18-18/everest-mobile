@@ -209,14 +209,14 @@ const AdminTeachersView: React.FC = () => {
           placeholder="Search teachers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-text-primary-light dark:text-text-primary-dark placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm"
+          className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark text-text-primary-light dark:text-text-primary-dark placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm"
         />
       </div>
 
       {/* Teachers List — white cards, circular avatar */}
       <div className="space-y-3 mb-8">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark shadow-sm">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
             <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">Loading...</p>
           </div>
@@ -224,9 +224,9 @@ const AdminTeachersView: React.FC = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
+            className="flex flex-col items-center justify-center py-16 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark shadow-sm"
           >
-            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 bg-slate-100 dark:bg-card-dark/80 rounded-full flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-4xl text-slate-400">person_off</span>
             </div>
             <p className="text-text-secondary-light dark:text-text-secondary-dark">
@@ -244,7 +244,7 @@ const AdminTeachersView: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
                   transition={{ delay: idx * 0.04 }}
-                  className="bg-white dark:bg-slate-800 rounded-xl p-4 lg:p-5 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4"
+                  className="bg-white dark:bg-card-dark rounded-xl p-4 lg:p-5 shadow-sm border border-slate-200 dark:border-border-dark flex items-center gap-4"
                 >
                   {/* Avatar — circular, dark blue/primary */}
                   {teacher.avatar ? (
@@ -277,24 +277,36 @@ const AdminTeachersView: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Menu */}
-                  <div className="relative flex-shrink-0">
+                  {/* Edit + Menu */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowMenuId(showMenuId === teacher._id ? null : teacher._id);
+                        setShowMenuId(null);
+                        openEditModal(teacher);
                       }}
-                      className="w-9 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                      className="w-9 h-9 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 flex items-center justify-center transition-colors text-primary"
+                      title="Edit teacher"
                     >
-                      <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
+                      <span className="material-symbols-outlined text-xl">edit</span>
                     </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenuId(showMenuId === teacher._id ? null : teacher._id);
+                        }}
+                        className="w-9 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
+                      </button>
                     <AnimatePresence>
                       {showMenuId === teacher._id && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden"
+                          className="absolute right-0 top-11 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-lg z-50 min-w-[140px] overflow-hidden"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -317,6 +329,7 @@ const AdminTeachersView: React.FC = () => {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -417,6 +430,7 @@ const AdminTeachersView: React.FC = () => {
                     </span>
                     <input
                       type="text"
+                      autoComplete="off"
                       placeholder="username"
                       value={form.username}
                       onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -437,6 +451,7 @@ const AdminTeachersView: React.FC = () => {
                     </span>
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value.replace(/\s/g, '') })}
@@ -619,7 +634,7 @@ const AdminTeachersView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowEdit({ open: false })}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-card-dark hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
                 >
                   Cancel
                 </button>
@@ -678,7 +693,7 @@ const AdminTeachersView: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDelete({ open: false })}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-card-dark hover:bg-slate-200 dark:hover:bg-slate-700 text-text-primary-light dark:text-text-primary-dark rounded-xl font-semibold transition-colors"
                 >
                   Cancel
                 </button>

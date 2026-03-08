@@ -36,8 +36,9 @@ interface Group {
 }
 
 const GroupDetailView: React.FC = () => {
-  const { groupId } = useParams();
+  const { groupId, teacherId } = useParams<{ groupId?: string; teacherId?: string }>();
   const navigate = useNavigate();
+  const isAdminContext = !!teacherId;
   const [group, setGroup] = useState<Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -346,7 +347,9 @@ const GroupDetailView: React.FC = () => {
               <div 
                 key={student._id}
                 className="flex items-center gap-3 p-3 rounded-xl bg-card-light dark:bg-card-dark border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-primary/40 transition-all"
-                onClick={() => navigate(`/students/${student._id}`)}
+                onClick={() => navigate(isAdminContext && teacherId && groupId
+                  ? `/admin/teacher/${teacherId}/group/${groupId}/student/${student._id}`
+                  : `/students/${student._id}`)}
               >
                 {sortBy === 'rank' && student.rank && (
                   <div className={`text-xl font-bold w-8 text-center ${

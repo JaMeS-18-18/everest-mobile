@@ -24,7 +24,7 @@ const SuperadminBottomNav: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 z-40">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-border-dark z-40">
       <div className="flex justify-around items-center h-16 px-2">
         {navItems.map(item => {
           const isActive = item.path === '/superadmin/admins'

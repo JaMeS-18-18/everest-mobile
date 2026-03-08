@@ -432,7 +432,7 @@ const TasksView: React.FC = () => {
       case 'reviewed':
         return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600', label: 'Reviewed' };
       default:
-        return { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600', label: status };
+        return { bg: 'bg-slate-100 dark:bg-card-dark', text: 'text-slate-600', label: status };
     }
   };
 
@@ -489,7 +489,7 @@ const TasksView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 pt-12">
+      <div className="px-2 pt-4 pb-2 sm:px-4">
         {/* <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-primary">{user.fullName || 'Teacher'}</span>
           <button 
@@ -538,7 +538,7 @@ const TasksView: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Search by group or student name..."
-              className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-primary"
+              className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark focus:ring-2 focus:ring-primary focus:border-primary"
             />
             {searchQuery && (
               <button
@@ -575,10 +575,10 @@ const TasksView: React.FC = () => {
                   ${isOverdueTab
                     ? activeFilter === filter.key
                       ? 'bg-red-600 text-white'
-                      : 'bg-white dark:bg-slate-800 border border-red-400 text-red-600 dark:border-red-600'
+                      : 'bg-white dark:bg-card-dark border border-red-400 text-red-600 dark:border-red-600'
                     : activeFilter === filter.key
                       ? 'bg-primary text-white'
-                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'}
+                      : 'bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark'}
                 `}
               >
                 {filter.label}
@@ -591,7 +591,7 @@ const TasksView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-4">
+      <div className="flex-1 overflow-y-auto px-2 pb-24 space-y-4 sm:px-4">
         {filteredHomeworks.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">assignment</span>
@@ -609,7 +609,7 @@ const TasksView: React.FC = () => {
             return (
               <div
                 key={homework._id}
-                className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer relative"
+                className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-border-dark hover:shadow-lg transition-all cursor-pointer relative"
                 onClick={() => navigate(`/tasks/${homework._id}`)}
               >
                 <div className="flex items-start gap-3 mb-3">
@@ -622,7 +622,7 @@ const TasksView: React.FC = () => {
                         {statusConfig.label}
                       </span>
                       {homework.groupId && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 capitalize">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-card-dark text-slate-600 dark:text-slate-400 capitalize">
                           {homework.groupId.name}
                         </span>
                       )}
@@ -754,112 +754,67 @@ const TasksView: React.FC = () => {
         </button>
       </div>
 
-      {/* Create Homework Modal */}
+      {/* Vazifa yuklash modal — soddalashtirilgan */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => {
-              setIsModalOpen(false);
-              setStudentSearch('');
-            }}
+            onClick={() => { setIsModalOpen(false); setStudentSearch(''); }}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="relative w-full max-w-md lg:max-w-xl bg-white dark:bg-card-dark rounded-t-3xl lg:rounded-2xl max-h-[90vh] flex flex-col shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-border-dark shrink-0">
+              <h2 className="text-lg font-bold">Vazifa yuklash</h2>
               <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setStudentSearch('');
-                }}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                onClick={() => { setIsModalOpen(false); setStudentSearch(''); }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-card-dark/90 rounded-lg"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
-              <h2 className="text-lg font-bold">Add Homework</h2>
-              <button
-                onClick={() => { }}
-                className="text-primary font-semibold text-sm"
-              >
-                {/* Save Draft */}
-              </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* Tasks Section */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Vazifalar */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold">Tasks ({tasks.length})</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Vazifalar ({tasks.length})</span>
                   <button
                     onClick={addTask}
-                    className="flex items-center gap-1 text-primary font-semibold text-sm px-3 py-1.5 rounded-lg border border-primary hover:bg-primary/5"
+                    className="flex items-center gap-1 text-primary text-sm font-medium px-2 py-1 rounded-lg border border-primary hover:bg-primary/5"
                   >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    Add Task
+                    <span className="material-symbols-outlined text-lg">add</span>
+                    Qo'shish
                   </button>
                 </div>
-
-                <div className="space-y-3">
-                  {tasks.reverse().map((task, index) => (
-                    <div
-                      key={task.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Task {tasks.length - index}</span>
+                <div className="space-y-2">
+                  {[...tasks].reverse().map((task, index) => (
+                    <div key={task.id} className="border border-slate-200 dark:border-border-dark rounded-xl p-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <input
+                          type="text"
+                          placeholder="Vazifa sarlavhasi *"
+                          value={task.title}
+                          onChange={(e) => updateTaskTitle(task.id, e.target.value)}
+                          className="flex-1 h-10 px-3 text-sm rounded-lg border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary"
+                        />
                         {tasks.length > 1 && (
-                          <button
-                            onClick={() => removeTask(task.id)}
-                            className="text-slate-400 hover:text-red-500"
-                          >
+                          <button type="button" onClick={() => removeTask(task.id)} className="text-slate-400 hover:text-red-500 p-1">
                             <span className="material-symbols-outlined text-xl">delete</span>
                           </button>
                         )}
                       </div>
-                      <input
-                        type="text"
-                        placeholder="Title *"
-                        value={task.title}
-                        onChange={(e) => updateTaskTitle(task.id, e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent mb-2 focus:outline-none focus:border-primary"
-                      />
-                      <input
-                        type="file"
-                        multiple
-                        ref={el => fileInputRefs.current[task.id] = el}
-                        onChange={(e) => {
-                          addTaskFiles(task.id, e.target.files);
-                          e.target.value = '';
-                        }}
-                        className="hidden"
-                        accept="image/*,.heic,.heif"
-                      />
-                      <button
-                        onClick={() => fileInputRefs.current[task.id]?.click()}
-                        className="w-full py-3 border-2 border-dashed border-primary/30 rounded-lg text-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/5"
-                      >
-                        <span className="material-symbols-outlined">upload_file</span>
-                        Upload Images
+                      <input type="file" multiple ref={el => fileInputRefs.current[task.id] = el} onChange={(e) => { addTaskFiles(task.id, e.target.files); e.target.value = ''; }} className="hidden" accept="image/*,.heic,.heif" />
+                      <button type="button" onClick={() => fileInputRefs.current[task.id]?.click()} className="w-full h-10 border-2 border-dashed border-primary/30 rounded-lg text-primary text-sm font-medium flex items-center justify-center gap-1 hover:bg-primary/5">
+                        <span className="material-symbols-outlined text-lg">upload_file</span>
+                        Rasm yuklash
                       </button>
-                      {/* Uploaded files preview */}
                       {task.files.length > 0 && (
-                        <div className="mt-2 space-y-1">
+                        <div className="mt-1.5 flex flex-wrap gap-1">
                           {task.files.map((file, fileIndex) => (
-                            <div key={fileIndex} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="material-symbols-outlined text-sm text-primary">
-                                  {file.type.startsWith('image/') ? 'image' : 'description'}
-                                </span>
-                                <span className="text-xs truncate">{file.name}</span>
-                              </div>
-                              <button
-                                onClick={() => removeTaskFile(task.id, fileIndex)}
-                                className="text-red-500 hover:text-red-600 shrink-0"
-                              >
-                                <span className="material-symbols-outlined text-sm">close</span>
-                              </button>
-                            </div>
+                            <span key={fileIndex} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-card-dark rounded text-xs truncate max-w-[180px]">
+                              <span className="material-symbols-outlined text-primary text-sm">image</span>
+                              <span className="truncate">{file.name}</span>
+                              <button type="button" onClick={() => removeTaskFile(task.id, fileIndex)} className="text-red-500 shrink-0"><span className="material-symbols-outlined text-sm">close</span></button>
+                            </span>
                           ))}
                         </div>
                       )}
@@ -868,173 +823,115 @@ const TasksView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Common Settings */}
-              <div>
-                <h3 className="text-lg font-bold mb-1">Common Settings</h3>
-                <p className="text-sm text-slate-500 mb-3">Applied to all tasks above</p>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      placeholder="Add detailed instructions..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Deadline <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Link <span className="text-slate-400">(Optional)</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="url"
-                        placeholder="https://"
-                        value={link}
-                        onChange={(e) => setLink(e.target.value)}
-                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
-                      />
-                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">link</span>
-                    </div>
-                  </div>
+              {/* Tavsif, muddat, havola */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-0.5">Tavsif *</label>
+                  <textarea
+                    placeholder="Qisqacha ko'rsatma..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="w-full h-auto min-h-[72px] px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary resize-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-0.5">Muddat *</label>
+                  <input
+                    type="datetime-local"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-0.5">Havola (ixtiyoriy)</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary"
+                  />
                 </div>
               </div>
 
-              {/* Recipients */}
+              {/* Kimlarga */}
               <div>
-                <h3 className="text-lg font-bold mb-3">Recipients</h3>
-
-                <div className="flex gap-4 mb-4">
+                <span className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kimlarga</span>
+                <div className="flex gap-4 mb-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="assignmentType"
-                      checked={assignmentType === 'group'}
-                      onChange={() => setAssignmentType('group')}
-                      className="w-5 h-5 text-primary"
-                    />
-                    <span className="font-medium">Entire Group</span>
+                    <input type="radio" name="assignmentType" checked={assignmentType === 'group'} onChange={() => setAssignmentType('group')} className="w-4 h-4 text-primary" />
+                    <span className="text-sm">Guruh</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="assignmentType"
-                      checked={assignmentType === 'individual'}
-                      onChange={() => setAssignmentType('individual')}
-                      className="w-5 h-5 text-primary"
-                    />
-                    <span className="font-medium">Individual Students</span>
+                    <input type="radio" name="assignmentType" checked={assignmentType === 'individual'} onChange={() => setAssignmentType('individual')} className="w-4 h-4 text-primary" />
+                    <span className="text-sm">O'quvchilar</span>
                   </label>
                 </div>
-
                 {assignmentType === 'group' && (
                   <select
                     value={selectedGroupId}
                     onChange={(e) => setSelectedGroupId(e.target.value)}
-                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary"
                   >
-                    <option value="">Select Group</option>
-                    {groups.map(group => (
-                      <option key={group._id} value={group._id}>{group.name}</option>
-                    ))}
+                    <option value="">Guruhni tanlang</option>
+                    {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
                   </select>
                 )}
-
                 {assignmentType === 'individual' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-500">
-                        {selectedStudentIds.length} student{selectedStudentIds.length !== 1 ? 's' : ''} selected
-                      </span>
-                      {selectedStudentIds.length > 0 && (
-                        <button
-                          onClick={() => setSelectedStudentIds([])}
-                          className="text-xs text-red-500 hover:text-red-600"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                    </div>
-                    {/* Search input for students */}
+                  <>
                     <input
                       type="text"
-                      placeholder="Search students..."
-                      className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      placeholder="O'quvchini qidirish..."
                       value={studentSearch}
                       onChange={e => setStudentSearch(e.target.value)}
+                      className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark focus:outline-none focus:border-primary mb-2"
                     />
-                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
-                      {students.length === 0 ? (
-                        <div className="p-4 text-center text-slate-500 text-sm">
-                          No students found
-                        </div>
+                    <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 dark:border-border-dark">
+                      {students.filter(s => s.fullName.toLowerCase().includes(studentSearch.toLowerCase())).length === 0 ? (
+                        <div className="p-3 text-center text-slate-500 text-sm">Topilmadi</div>
                       ) : (
-                        students
-                          .filter(student => student.fullName.toLowerCase().includes(studentSearch.toLowerCase()))
-                          .map(student => (
-                            <label
-                              key={student._id}
-                              className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedStudentIds.includes(String(student._id))}
-                                onChange={(e) => {
-                                  const studentId = String(student._id);
-                                  if (e.target.checked) {
-                                    setSelectedStudentIds([...selectedStudentIds, studentId]);
-                                  } else {
-                                    setSelectedStudentIds(selectedStudentIds.filter(id => id !== studentId));
-                                  }
-                                }}
-                                className="w-5 h-5 text-primary rounded border-slate-300"
-                              />
-                              <span className="font-medium">{student.fullName}</span>
-                            </label>
-                          ))
+                        students.filter(s => s.fullName.toLowerCase().includes(studentSearch.toLowerCase())).map(student => (
+                          <label key={student._id} className="flex items-center gap-2 p-2 hover:bg-slate-50 dark:hover:bg-card-dark/80 cursor-pointer border-b border-slate-100 dark:border-border-dark last:border-b-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudentIds.includes(String(student._id))}
+                              onChange={(e) => {
+                                const id = String(student._id);
+                                if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, id]);
+                                else setSelectedStudentIds(selectedStudentIds.filter(i => i !== id));
+                              }}
+                              className="w-4 h-4 text-primary rounded"
+                            />
+                            <span className="text-sm">{student.fullName}</span>
+                          </label>
+                        ))
                       )}
                     </div>
-                  </div>
+                    {selectedStudentIds.length > 0 && (
+                      <button type="button" onClick={() => setSelectedStudentIds([])} className="mt-1 text-xs text-red-500">Tozalash</button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+            <div className="p-4 border-t border-slate-200 dark:border-border-dark flex gap-3 shrink-0">
               <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetModal();
-                }}
-                className="flex-1 py-3 font-semibold text-slate-600 dark:text-slate-300"
+                onClick={() => { setIsModalOpen(false); resetModal(); }}
+                className="flex-1 h-11 text-sm font-semibold text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-card-dark/80"
               >
-                Cancel
+                Bekor qilish
               </button>
               <button
                 onClick={handleCreateHomework}
                 disabled={isSubmitting}
-                className="flex-1 py-3 bg-primary text-white font-semibold rounded-xl disabled:opacity-50"
+                className="flex-1 h-11 text-sm font-semibold bg-primary text-white rounded-xl disabled:opacity-50"
               >
-                {isSubmitting ? 'Creating...' : `Create ${tasks.filter(t => t.title.trim()).length} Assignment`}
+                {isSubmitting ? 'Yuklanmoqda...' : `Yuborish (${tasks.filter(t => t.title.trim()).length})`}
               </button>
             </div>
           </div>
@@ -1042,17 +939,17 @@ const TasksView: React.FC = () => {
       )}
       {/* Edit Task Modal */}
       {editModalOpen && editTask && (
-        <div className="fixed inset-0 z-[61] flex items-end justify-center">
+        <div className="fixed inset-0 z-[61] flex items-end lg:items-center justify-center p-0 lg:p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => { closeEditModal(); setRecreateStudentSearch(''); }} />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-              <button onClick={closeEditModal} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-                <span className="material-symbols-outlined">close</span>
+          <div className="relative w-full max-w-md lg:max-w-2xl bg-white dark:bg-card-dark rounded-t-3xl lg:rounded-2xl max-h-[90vh] lg:max-h-[85vh] flex flex-col animate-slide-up shadow-xl">
+            <div className="flex items-center justify-between p-4 lg:p-6 border-b border-slate-200 dark:border-border-dark">
+              <button onClick={closeEditModal} className="p-2 lg:p-2.5 hover:bg-slate-100 dark:hover:bg-card-dark/90 rounded-lg">
+                <span className="material-symbols-outlined text-xl lg:text-2xl">close</span>
               </button>
-              <h2 className="text-lg font-bold">Recreate Homework</h2>
+              <h2 className="text-lg lg:text-xl font-bold">Recreate Homework</h2>
               <div className="w-10"></div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-8">
               {/* Tasks Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -1064,7 +961,7 @@ const TasksView: React.FC = () => {
                 </div>
                 <div className="space-y-3">
                   {tasks.map((task, index) => (
-                    <div key={task.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                    <div key={task.id} className="border border-slate-200 dark:border-border-dark rounded-xl p-3">
                       {/* Recipients (edit modal) */}
                       {/* Existing images preview */}
                       {task.images && task.images.length > 0 && (
@@ -1102,7 +999,7 @@ const TasksView: React.FC = () => {
                         placeholder="Title *"
                         value={task.title}
                         onChange={e => updateTaskTitle(task.id, e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent mb-2 focus:outline-none focus:border-primary"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent mb-2 focus:outline-none focus:border-primary"
                       />
                       <input
                         type="file"
@@ -1127,7 +1024,7 @@ const TasksView: React.FC = () => {
                         <div className="mt-2 space-y-1">
                           <span className="text-xs text-slate-500 mb-1 block">New files:</span>
                           {task.files.map((file, fileIndex) => (
-                            <div key={fileIndex} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <div key={fileIndex} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-card-dark rounded-lg">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="material-symbols-outlined text-sm text-primary">
                                   {file.type.startsWith('image/') ? 'image' : 'description'}
@@ -1157,7 +1054,7 @@ const TasksView: React.FC = () => {
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary resize-none"
                       required
                     />
                   </div>
@@ -1167,7 +1064,7 @@ const TasksView: React.FC = () => {
                       type="datetime-local"
                       value={deadline}
                       onChange={e => setDeadline(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary"
                       required
                     />
                   </div>
@@ -1179,7 +1076,7 @@ const TasksView: React.FC = () => {
                         placeholder="https://"
                         value={link}
                         onChange={e => setLink(e.target.value)}
-                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary"
                       />
                       <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">link</span>
                     </div>
@@ -1215,7 +1112,7 @@ const TasksView: React.FC = () => {
                   <select
                     value={selectedGroupId}
                     onChange={e => setSelectedGroupId(e.target.value)}
-                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
                   >
                     <option value="">Select Group</option>
                     {groups.map(group => (
@@ -1235,18 +1132,18 @@ const TasksView: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Search students..."
-                      className="w-full px-3 py-2 mb-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      className="w-full px-3 py-2 lg:px-4 lg:py-3 text-base mb-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary"
                       value={studentSearch}
                       onChange={e => setStudentSearch(e.target.value)}
                     />
-                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-border-dark rounded-lg">
                       {students.length === 0 ? (
                         <div className="p-4 text-center text-slate-500 text-sm">No students found</div>
                       ) : (
                         students
                           .filter(student => student.fullName.toLowerCase().includes(studentSearch.toLowerCase()))
                           .map(student => (
-                            <label key={student._id} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                            <label key={student._id} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-card-dark/90 cursor-pointer border-b border-slate-100 dark:border-border-dark last:border-b-0">
                               <input
                                 type="checkbox"
                                 checked={selectedStudentIds.includes(String(student._id))}
@@ -1270,7 +1167,7 @@ const TasksView: React.FC = () => {
               </div>
             </div>
             {/* Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+            <div className="p-4 border-t border-slate-200 dark:border-border-dark flex gap-3">
               <button onClick={closeEditModal} className="flex-1 py-3 font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
               <button
                 onClick={async () => {

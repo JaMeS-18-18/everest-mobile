@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from '../contexts/LanguageContext';
+
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 interface LoaderProps {
@@ -6,9 +8,9 @@ interface LoaderProps {
   version?: string;
 }
 
-import { useEffect, useState } from 'react';
-
-const Loader: React.FC<LoaderProps> = ({ text = "Loading...", version = APP_VERSION }) => {
+const Loader: React.FC<LoaderProps> = ({ text, version = APP_VERSION }) => {
+  const t = useTranslation();
+  const displayText = text ?? t('loader_loading');
   // Dark mode detection (tailwind or class-based)
   const [isDark, setIsDark] = useState(() => {
     if (typeof document !== 'undefined') {
@@ -56,7 +58,7 @@ const Loader: React.FC<LoaderProps> = ({ text = "Loading...", version = APP_VERS
           </div>
         </div>
         {/* Loader text */}
-        <div className="text-xl font-semibold mb-2 text-center" style={{ color: textColor }}>{text}</div>
+        <div className="text-xl font-semibold mb-2 text-center" style={{ color: textColor }}>{displayText}</div>
         {/* Progress bar */}
         <div className="w-72 h-2 rounded-full overflow-hidden" style={{ background: barBg }}>
           <div className="h-full rounded-full animate-loader-bar" style={{ width: '40%', background: barFg }}></div>

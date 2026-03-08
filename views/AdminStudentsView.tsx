@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '../api';
 import { toast } from 'react-toastify';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface StudentItem {
   _id: string;
@@ -15,6 +16,7 @@ interface StudentItem {
 
 const AdminStudentsView: React.FC = () => {
   const navigate = useNavigate();
+  const t = useTranslation();
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -25,7 +27,7 @@ const AdminStudentsView: React.FC = () => {
       const res = await api.get('/admin/students');
       setStudents(res.data?.data ?? []);
     } catch (err) {
-      toast.error("O'quvchilar yuklanmadi");
+      toast.error(t('admin_students_load_error'));
     } finally {
       setLoading(false);
     }
@@ -57,28 +59,23 @@ const AdminStudentsView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-transparent">
-      {/* Header */}
+      {/* Header: only count and org (title is in AppHeader; no duplicate "Students") */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-text-primary-light dark:text-text-primary-dark">
-            Students
-          </h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
-              <span className="w-2 h-2 bg-green-500 rounded-full" />
-              {students.length} o'quvchi
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+            <span className="w-2 h-2 bg-green-500 rounded-full" />
+            {students.length} {t('admin_students_count_word')}
+          </span>
+          {getOrgName() && (
+            <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+              • {getOrgName()}
             </span>
-            {getOrgName() && (
-              <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                {getOrgName()}
-              </span>
-            )}
-          </div>
+          )}
         </div>
         <button
           onClick={() => fetchStudents()}
           className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors self-start sm:self-center"
-          aria-label="Yangilash"
+          aria-label={t('admin_refresh')}
         >
           <span className="material-symbols-outlined">refresh</span>
         </button>
@@ -91,34 +88,34 @@ const AdminStudentsView: React.FC = () => {
         </span>
         <input
           type="text"
-          placeholder="Ism, login, telefon, guruh bo'yicha qidirish..."
+          placeholder={t('admin_students_search_placeholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-text-primary-light dark:text-text-primary-dark placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm"
+          className="w-full h-12 pl-11 pr-4 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark text-text-primary-light dark:text-text-primary-dark placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm"
         />
       </div>
 
       {/* Students list */}
       <div className="space-y-3">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-20 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark shadow-sm">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">Yuklanmoqda...</p>
+            <p className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">{t('admin_loading')}</p>
           </div>
         ) : filtered.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
+            className="flex flex-col items-center justify-center py-20 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark shadow-sm"
           >
             <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-4xl text-emerald-500">school</span>
             </div>
             <p className="text-text-secondary-light dark:text-text-secondary-dark font-medium">
-              {search ? "O'quvchilar topilmadi" : "O'quvchilar ro'yxati bo'sh"}
+              {search ? t('admin_students_not_found') : t('admin_students_empty')}
             </p>
             <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-              {search ? "Boshqa so'z bilan qidiring" : "O'qituvchilar orqali o'quvchi qo'shiladi"}
+              {search ? t('admin_students_search_other') : t('admin_students_add_via_teachers')}
             </p>
           </motion.div>
         ) : (
@@ -139,7 +136,7 @@ const AdminStudentsView: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.03, 0.3) }}
                   onClick={() => navigate(`/students/${student._id}`)}
-                  className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex items-start gap-4 cursor-pointer hover:border-primary/30 hover:shadow-md transition-all"
+                  className="bg-white dark:bg-card-dark rounded-xl p-4 shadow-sm border border-slate-200 dark:border-border-dark flex items-start gap-4 cursor-pointer hover:border-primary/30 hover:shadow-md transition-all"
                 >
                   <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-lg flex-shrink-0">
                     {initials}
@@ -164,7 +161,7 @@ const AdminStudentsView: React.FC = () => {
                     )}
                     {teacher?.fullName && (
                       <p className="mt-1 text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">
-                        O'qituvchi: {teacher.fullName}
+                        {t('admin_teacher_label')} {teacher.fullName}
                       </p>
                     )}
                   </div>

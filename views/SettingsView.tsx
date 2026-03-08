@@ -4,6 +4,41 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 import { UserRole } from '../types';
 import api from '../api';
 import Loader from '@/components/Loader';
+import { useLanguage, useTranslation } from '../contexts/LanguageContext';
+import type { LangCode } from '../contexts/LanguageContext';
+
+const LANGUAGE_OPTIONS: { code: LangCode; label: string }[] = [
+  { code: 'eng', label: 'Eng' },
+  { code: 'ru', label: 'Ru' },
+  { code: 'uz', label: 'Uz' },
+];
+
+const LanguageRow: React.FC = () => {
+  const { lang, setLang } = useLanguage();
+  const t = useTranslation();
+  return (
+    <div className="flex items-center gap-4 px-4 py-3">
+      <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+        <span className="material-symbols-outlined text-[20px]">translate</span>
+      </div>
+      <div className="flex-1 font-medium">{t('settings_language')}</div>
+      <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-100 dark:bg-card-dark/80 border border-slate-200 dark:border-border-dark">
+        {LANGUAGE_OPTIONS.map(({ code, label }) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLang(code)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              lang === code ? 'bg-primary text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 interface SettingsViewProps {
   role: UserRole;
@@ -42,6 +77,7 @@ interface Group {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
 
 const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDarkMode, onLogout, onBack }) => {
+  const t = useTranslation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -74,8 +110,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   const [editingST, setEditingST] = useState<SupportTeacher | null>(null);
   const [showSTList, setShowSTList] = useState(false);
 
-  // Admin: current organization plan (tariff)
-  const [orgPlan, setOrgPlan] = useState<{ name: string; plan: string } | null>(null);
+  // Admin: current organization (name, plan, logo)
+  const [orgPlan, setOrgPlan] = useState<{ name: string; plan: string; logo?: string } | null>(null);
+  const [orgLogoUrl, setOrgLogoUrl] = useState('');
+  const [isSavingOrgLogo, setIsSavingOrgLogo] = useState(false);
 
   // Restore dark mode from localStorage on mount
   useEffect(() => {
@@ -106,7 +144,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
       api.get('/admin/organization')
         .then((res) => {
           if (res.data?.success && res.data?.data) {
-            setOrgPlan(res.data.data);
+            const d = res.data.data;
+            const org = d.organization ?? d;
+            setOrgPlan({ name: org.name, plan: org.plan || 'platinum', logo: org.logo });
+            setOrgLogoUrl(org.logo || '');
           }
         })
         .catch(() => {});
@@ -156,10 +197,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         setNewPassword('');
         onLogout(); // Logout only if 200 and success
       } else {
-        setPasswordError(response.data.message || 'Failed to change password');
+        setPasswordError(response.data.message || t('settings_error_password_failed'));
       }
     } catch (err: any) {
-      setPasswordError(err?.response?.data?.message || 'Failed to change password');
+      setPasswordError(err?.response?.data?.message || t('settings_error_password_failed'));
     } finally {
       setIsChanging(false);
     }
@@ -203,11 +244,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
 
   const handleSaveST = async () => {
     if (!supportTeacherForm.fullName || !supportTeacherForm.username) {
-      setStError('F.I.O va login majburiy');
+      setStError(t('settings_error_name_login_required'));
       return;
     }
     if (!editingST && !supportTeacherForm.password) {
-      setStError('Parol majburiy');
+      setStError(t('settings_error_password_required'));
       return;
     }
 
@@ -240,17 +281,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         }
         setShowSupportTeacherModal(false);
       } else {
-        setStError(response.data.message || 'Xatolik yuz berdi');
+        setStError(response.data.message || t('settings_error_generic'));
       }
     } catch (err: any) {
-      setStError(err?.response?.data?.message || 'Xatolik yuz berdi');
+      setStError(err?.response?.data?.message || t('settings_error_generic'));
     } finally {
       setIsSavingST(false);
     }
   };
 
   const handleDeleteST = async (id: string) => {
-    if (!confirm('Haqiqatan ham o\'chirmoqchimisiz?')) return;
+    if (!confirm(t('settings_confirm_delete'))) return;
     try {
       const response = await api.delete(`/support-teachers/${id}`);
       if (response.data.success) {
@@ -274,7 +315,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setImageError('File size must be less than 5MB');
+      setImageError(t('settings_error_file_size'));
       return;
     }
     const reader = new FileReader();
@@ -291,7 +332,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
       const fileInput = document.getElementById('profile-image-input') as HTMLInputElement;
       const file = fileInput?.files?.[0];
       if (!file) {
-        setImageError('No file selected');
+        setImageError(t('settings_error_no_file'));
         setUploadingImage(false);
         return;
       }
@@ -305,10 +346,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         setShowImageModal(false);
         setProfile((prev) => prev ? { ...prev, profileImage: response.data.url } : prev);
       } else {
-        setImageError(response.data.message || 'Upload failed');
+        setImageError(response.data.message || t('settings_error_upload_failed'));
       }
     } catch (err) {
-      setImageError('Upload failed');
+      setImageError(t('settings_error_upload_failed'));
     } finally {
       setUploadingImage(false);
     }
@@ -325,8 +366,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-black">
-      {/* <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-4 pt-12 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-background-dark">
+      {/* <header className="sticky top-0 z-30 bg-white/80 dark:bg-card-dark/80 backdrop-blur-md px-4 py-4 pt-12 flex items-center justify-between border-b border-slate-200 dark:border-border-dark">
         <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full text-primary">
           <span className="material-symbols-outlined">arrow_back_ios_new</span>
         </button>
@@ -338,28 +379,28 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         <div className="relative mb-4 group cursor-pointer" onClick={() => setShowImageModal(true)}>
           <img 
             src={getProfileImageUrl(profile?.profileImage) || "https://media.istockphoto.com/id/2168774111/vector/avatar-or-person-sign-profile-picture-portrait-icon-user-profile-symbol.jpg?s=612x612&w=0&k=20&c=6qw1LRG53z00RXJnVKQC58W7XnW2gdQfGBIR43E97Oc="}
-            className="w-28 h-28 rounded-full border-4 border-white dark:border-slate-800 shadow-sm object-cover" 
+            className="w-28 h-28 rounded-full border-4 border-white dark:border-border-dark shadow-sm object-cover" 
             alt="Profile" 
           />
-          <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-800">
+          <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center ring-4 ring-white dark:ring-border-dark">
             <span className="material-symbols-outlined text-[16px]">edit</span>
           </div>
         </div>
         <h3 className="text-xl font-bold">{profile?.fullName || '...'}</h3>
-        <p className="text-sm text-slate-500">{profile?.role === UserRole.TEACHER ? 'Mathematics Teacher' : (profile?.studentInfo?.groupId?.name ? `${profile.studentInfo.groupId.name} • Student` : '')}</p>
+        <p className="text-sm text-slate-500">{profile?.role === UserRole.TEACHER ? t('settings_math_teacher') : (profile?.studentInfo?.groupId?.name ? `${profile.studentInfo.groupId.name} • ${t('nav_student')}` : '')}</p>
         {/* <button className="mt-4 px-6 py-2 rounded-full bg-primary/10 text-primary font-bold text-sm">Edit Profile</button> */}
       </div>
 
       <div className="px-4 space-y-6 pb-12">
         <section>
-          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Account</h4>
-          <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_account')}</h4>
+          <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
             <div className="flex items-center gap-4 px-4 py-3">
               <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
                 <span className="material-symbols-outlined text-[18px] align-middle">person</span>
               </div>
               <div className="flex-1">
-                <p className="font-medium">Username</p>
+                <p className="font-medium">{t('settings_username')}</p>
               </div>
               <span className="text-sm text-slate-500">{profile?.username || '-'}</span>
             </div>
@@ -371,7 +412,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 <span className="material-symbols-outlined text-[20px]">lock</span>
               </div>
               <div className="flex-1">
-                <p className="font-medium">Change Password</p>
+                <p className="font-medium">{t('settings_change_password')}</p>
               </div>
               <span className="material-symbols-outlined text-slate-400">chevron_right</span>
             </button>
@@ -380,44 +421,80 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
 
         {role === UserRole.ADMIN && orgPlan && (
           <section>
-            <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Markaz</h4>
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+            <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_center')}</h4>
+            <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
               <div className="flex items-center gap-4 px-4 py-3">
                 <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium">Joriy tarif</p>
+                  <p className="font-medium">{t('settings_current_plan')}</p>
                   <p className="text-xs text-slate-500">{orgPlan.name}</p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-sm font-semibold bg-primary/10 text-primary capitalize">
                   {orgPlan.plan === 'basic' ? 'Basic' : orgPlan.plan === 'premium' ? 'Premium' : 'Platinum'}
                 </span>
               </div>
+              <div className="px-4 py-3 space-y-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('settings_center_logo')}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                    {orgLogoUrl ? (
+                      <img src={orgLogoUrl} alt={t('settings_center_logo')} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <span className="material-symbols-outlined text-2xl">image</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="url"
+                      value={orgLogoUrl}
+                      onChange={(e) => setOrgLogoUrl(e.target.value)}
+                      placeholder={t('settings_logo_placeholder')}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSavingOrgLogo}
+                    onClick={async () => {
+                      setIsSavingOrgLogo(true);
+                      try {
+                        const res = await api.patch('/admin/organization', { logo: orgLogoUrl.trim() });
+                        if (res.data?.success && res.data?.data) {
+                          const d = res.data.data;
+                          const org = d.organization ?? d;
+                          setOrgPlan((p) => p ? { ...p, logo: org.logo } : null);
+                          setOrgLogoUrl(org.logo || '');
+                        }
+                      } catch {
+                        // ignore
+                      } finally {
+                        setIsSavingOrgLogo(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark disabled:opacity-50"
+                  >
+                    {isSavingOrgLogo ? '...' : t('settings_save')}
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         )}
 
         <section>
-          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Preferences</h4>
-          <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
-            {/* <div className="flex items-center gap-4 px-4 py-3">
-              <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px]">notifications</span>
-              </div>
-              <div className="flex-1 font-medium">Push Notifications</div>
-              <div 
-                onClick={() => {}} 
-                className="w-12 h-6 bg-primary rounded-full relative cursor-pointer"
-              >
-                <div className="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full"></div>
-              </div>
-            </div> */}
+          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_preferences')}</h4>
+          <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
+            <LanguageRow />
             <div className="flex items-center gap-4 px-4 py-3">
               <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
                 <span className="material-symbols-outlined text-[20px]">dark_mode</span>
               </div>
-              <div className="flex-1 font-medium">Dark Mode</div>
+              <div className="flex-1 font-medium">{t('settings_dark_mode')}</div>
               <div 
                 onClick={() => setIsDarkMode(!isDarkMode)} 
                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${isDarkMode ? 'bg-primary' : 'bg-slate-200'}`}
@@ -432,20 +509,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         {(role === UserRole.TEACHER || role === 'teacher' || String(role).toLowerCase() === 'teacher') && (
           <section>
             <div className="flex items-center justify-between px-2 pb-2">
-              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Support Teachers</h4>
+              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_support_teachers')}</h4>
               <button 
                 onClick={openCreateSTModal}
                 className="text-primary text-sm font-medium flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
-                Add
+                {t('settings_add')}
               </button>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
               {supportTeachers.length === 0 ? (
                 <div className="px-4 py-6 text-center text-slate-400">
                   <span className="material-symbols-outlined text-4xl mb-2">person_add</span>
-                  <p className="text-sm">No support teachers</p>
+                  <p className="text-sm">{t('settings_no_support_teachers')}</p>
                 </div>
               ) : (
                 supportTeachers.map((st) => (
@@ -481,8 +558,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         )}
 
         <section>
-          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Support</h4>
-          <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+          <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_support')}</h4>
+          <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
             <a
               href="https://t.me/dohomework_support"
               target="_blank"
@@ -492,10 +569,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
               <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
                 <span className="material-symbols-outlined text-[20px]">send</span>
               </div>
-              <div className="flex-1 font-medium">Telegram</div>
+              <div className="flex-1 font-medium">{t('settings_telegram')}</div>
               <span className="material-symbols-outlined text-slate-400">chevron_right</span>
             </a>
-            <a
+            {/* <a
               href="tel:+998900292374"
               className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
             >
@@ -504,34 +581,34 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
               </div>
               <div className="flex-1 font-medium">+998 90 029 23 74</div>
               <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-            </a>
+            </a> */}
           </div>
         </section>
 
         <button 
           onClick={onLogout}
-          className="w-full h-14 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-red-500 font-bold rounded-xl active:bg-red-50 transition-colors"
+          className="w-full h-14 bg-white dark:bg-card-dark border border-slate-100 dark:border-border-dark text-red-500 font-bold rounded-xl active:bg-red-50 transition-colors"
         >
-          Log Out
+          {t('settings_log_out')}
         </button>
 
         <div className="text-center text-[10px] text-slate-400 pb-8">
-          Version {APP_VERSION}
+          {t('settings_version')} {APP_VERSION}
         </div>
       </div>
 
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl flex flex-col gap-4">
-            <h3 className="text-lg font-bold mb-2">Change Password</h3>
-            <label className="text-sm font-medium">Current Password</label>
+          <div className="bg-white dark:bg-card-dark rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl flex flex-col gap-4">
+            <h3 className="text-lg font-bold mb-2">{t('settings_change_password')}</h3>
+            <label className="text-sm font-medium">{t('settings_current_password')}</label>
             <div className="relative">
               <input
                 type={showOldPassword ? "text" : "password"}
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm pr-12"
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm pr-12"
                 value={oldPassword}
                 onChange={e => setOldPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder={t('settings_enter_current_password')}
                 autoFocus
               />
               <button
@@ -545,14 +622,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 </span>
               </button>
             </div>
-            <label className="text-sm font-medium mt-2">New Password</label>
+            <label className="text-sm font-medium mt-2">{t('settings_new_password')}</label>
             <div className="relative">
               <input
                 type={showNewPassword ? "text" : "password"}
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm pr-12"
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm pr-12"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder={t('settings_enter_new_password')}
               />
               <button
                 type="button"
@@ -568,11 +645,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
             {passwordError && <p className="text-red-500 text-sm mt-2">{passwordError}</p>}
             <div className="flex gap-2 mt-4">
               <button
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-border-dark font-medium"
                 onClick={() => setShowPasswordModal(false)}
                 disabled={isChanging}
               >
-                Cancel
+                {t('settings_cancel')}
               </button>
               <button
                 className="flex-1 py-3 rounded-xl bg-indigo-500 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
@@ -580,7 +657,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 disabled={isChanging || !oldPassword || !newPassword}
               >
                 {isChanging && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
-                Change
+                {t('settings_change')}
               </button>
             </div>
           </div>
@@ -589,14 +666,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
 
       {showImageModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-full max-w-xs mx-auto flex flex-col items-center border border-slate-100 dark:border-slate-800">
-            <h3 className="font-bold text-lg mb-3 text-primary">Change Profile Image</h3>
+          <div className="bg-white dark:bg-card-dark rounded-2xl shadow-2xl p-6 w-full max-w-xs mx-auto flex flex-col items-center border border-slate-100 dark:border-border-dark">
+            <h3 className="font-bold text-lg mb-3 text-primary">{t('settings_change_profile_image')}</h3>
             <input id="profile-image-input" type="file" accept="image/*" className="mb-3 w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition" onChange={handleImageChange} disabled={uploadingImage} />
             {imagePreview && <img src={imagePreview} alt="Preview" className="w-24 h-24 rounded-full object-cover mb-3 border-4 border-primary/30 shadow" />}
             {imageError && <p className="text-xs text-red-500 mb-2 text-center">{imageError}</p>}
             <div className="flex gap-2 mt-2 w-full">
-              <button className="flex-1 px-4 py-2 rounded-full bg-primary text-white font-bold shadow hover:bg-primary-dark transition disabled:opacity-50" onClick={handleUploadImage} disabled={uploadingImage}>{uploadingImage ? 'Uploading...' : 'Upload'}</button>
-              <button className="flex-1 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold shadow hover:bg-slate-300 dark:hover:bg-slate-700 transition" onClick={() => { setShowImageModal(false); setImagePreview(null); setImageError(null); }}>Cancel</button>
+              <button className="flex-1 px-4 py-2 rounded-full bg-primary text-white font-bold shadow hover:bg-primary-dark transition disabled:opacity-50" onClick={handleUploadImage} disabled={uploadingImage}>{uploadingImage ? t('settings_uploading') : t('settings_upload')}</button>
+              <button className="flex-1 px-4 py-2 rounded-full bg-slate-200 dark:bg-card-dark text-slate-700 dark:text-slate-200 font-bold shadow hover:bg-slate-300 dark:hover:bg-slate-700 transition" onClick={() => { setShowImageModal(false); setImagePreview(null); setImageError(null); }}>{t('settings_cancel')}</button>
             </div>
           </div>
         </div>
@@ -605,52 +682,52 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
       {/* Support Teacher Modal */}
       {showSupportTeacherModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-card-dark rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold mb-4">
-              {editingST ? "Edit Support Teacher" : "New Support Teacher"}
+              {editingST ? t('settings_edit_support_teacher') : t('settings_new_support_teacher')}
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Full Name *</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('settings_full_name')}</label>
                 <input
                   type="text"
-                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm"
                   value={supportTeacherForm.fullName}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  placeholder="Enter full name"
+                  placeholder={t('settings_enter_full_name')}
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Login *</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('settings_login')}</label>
                 <input
                   type="text"
-                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm"
                   value={supportTeacherForm.username}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="Enter username"
+                  placeholder={t('settings_enter_username')}
                 />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Password {editingST ? '(leave blank to keep unchanged)' : '*'}
+                  {t('settings_password')} {editingST ? t('settings_password_optional') : '*'}
                 </label>
                 <input
                   type="password"
-                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm"
                   value={supportTeacherForm.password}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder={editingST ? "New password (optional)" : "Password"}
+                  placeholder={editingST ? t('settings_new_password_optional') : t('settings_password')}
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Phone</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('settings_phone')}</label>
                 <input
                   type="tel"
-                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                  className="w-full mt-1 p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark text-sm"
                   value={supportTeacherForm.phone}
                   onChange={e => setSupportTeacherForm(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="+998 XX XXX XX XX"
@@ -658,9 +735,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Groups</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">{t('settings_groups')}</label>
                 
-                {/* All Groups Toggle */}
                 <div 
                   onClick={() => {
                     setIsAllGroups(!isAllGroups);
@@ -669,7 +745,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                   className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer mb-2 transition-colors ${
                     isAllGroups 
                       ? 'border-primary bg-primary/5' 
-                      : 'border-slate-200 dark:border-slate-700'
+                      : 'border-slate-200 dark:border-border-dark'
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -677,10 +753,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                   }`}>
                     {isAllGroups && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
                   </div>
-                  <span className="font-medium">All Groups</span>
+                  <span className="font-medium">{t('settings_all_groups')}</span>
                 </div>
 
-                {/* Individual Groups */}
                 {!isAllGroups && (
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {groups.map(group => (
@@ -690,7 +765,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                         className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                           selectedGroups.includes(group._id)
                             ? 'border-primary bg-primary/5' 
-                            : 'border-slate-200 dark:border-slate-700'
+                            : 'border-slate-200 dark:border-border-dark'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -704,7 +779,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                       </div>
                     ))}
                     {groups.length === 0 && (
-                      <p className="text-sm text-slate-400 text-center py-2">No groups available</p>
+                      <p className="text-sm text-slate-400 text-center py-2">{t('settings_no_groups')}</p>
                     )}
                   </div>
                 )}
@@ -715,11 +790,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
 
             <div className="flex gap-2 mt-6">
               <button
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-border-dark font-medium"
                 onClick={() => setShowSupportTeacherModal(false)}
                 disabled={isSavingST}
               >
-                Cancel
+                {t('settings_cancel')}
               </button>
               <button
                 className="flex-1 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
@@ -727,7 +802,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
                 disabled={isSavingST || !supportTeacherForm.fullName || !supportTeacherForm.username || (!editingST && !supportTeacherForm.password)}
               >
                 {isSavingST && <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>}
-                {editingST ? 'Save' : 'Create'}
+                {editingST ? t('settings_save') : t('settings_create')}
               </button>
             </div>
           </div>

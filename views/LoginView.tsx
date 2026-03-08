@@ -392,7 +392,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             className="w-full"
           >
             <form
-              className="w-full space-y-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-slate-200/50 dark:shadow-black/20"
+              className="w-full space-y-4 bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl p-8 rounded-3xl border border-slate-200/50 dark:border-border-dark/50 shadow-2xl shadow-slate-200/50 dark:shadow-black/20"
               onSubmit={handleSubmit}
             >
               {/* Welcome Text */}

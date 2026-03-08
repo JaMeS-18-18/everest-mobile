@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface BottomNavProps {
   role?: UserRole;
@@ -10,31 +10,31 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const t = useTranslation();
 
-  // Define tabs with route paths
   const teacherTabs = [
-    { label: 'Groups', icon: 'groups', path: '/groups' },
-    { label: 'Schedule', icon: 'calendar_month', path: '/teacher/schedule' },
-    { label: 'Students', icon: 'school', path: '/students' },
-    { label: 'Tasks', icon: 'assignment', path: '/tasks' },
-    { label: 'Profile', icon: 'person', path: '/settings' },
+    { labelKey: 'nav_groups', icon: 'groups', path: '/groups' },
+    { labelKey: 'nav_schedule', icon: 'calendar_month', path: '/teacher/schedule' },
+    { labelKey: 'nav_students_teacher', icon: 'school', path: '/students' },
+    { labelKey: 'nav_tasks', icon: 'assignment', path: '/tasks' },
+    { labelKey: 'nav_profile', icon: 'person', path: '/settings' },
   ];
   const supportTeacherTabs = [
-    { label: 'Groups', icon: 'groups', path: '/support/groups' },
-    { label: 'Schedule', icon: 'calendar_month', path: '/support/schedule' },
-    { label: 'Appointments', icon: 'event_available', path: '/support/appointments' },
-    { label: 'Profile', icon: 'person', path: '/support/settings' },
+    { labelKey: 'nav_groups', icon: 'groups', path: '/support/groups' },
+    { labelKey: 'nav_schedule', icon: 'calendar_month', path: '/support/schedule' },
+    { labelKey: 'nav_appointments', icon: 'event_available', path: '/support/appointments' },
+    { labelKey: 'nav_profile', icon: 'person', path: '/support/settings' },
   ];
   const studentTabs = [
-    { label: 'Home', icon: 'home', path: '/student/home' },
-    { label: 'Schedule', icon: 'calendar_month', path: '/student/schedule' },
-    { label: 'Ranking', icon: 'leaderboard', path: '/student/ranking' },
-    { label: 'Settings', icon: 'settings', path: '/settings' },
+    { labelKey: 'nav_home', icon: 'home', path: '/student/home' },
+    { labelKey: 'nav_schedule', icon: 'calendar_month', path: '/student/schedule' },
+    { labelKey: 'nav_ranking', icon: 'leaderboard', path: '/student/ranking' },
+    { labelKey: 'nav_settings', icon: 'settings', path: '/settings' },
   ];
   const adminTabs = [
-    { label: 'Home', icon: 'dashboard', path: '/admin/dashboard' },
-    { label: 'Students', icon: 'school', path: '/admin/students' },
-    { label: 'Profile', icon: 'person', path: '/admin/settings' },
+    { labelKey: 'nav_dashboard', icon: 'dashboard', path: '/admin/dashboard' },
+    { labelKey: 'nav_students', icon: 'school', path: '/admin/students' },
+    { labelKey: 'nav_profile', icon: 'person', path: '/admin/settings' },
   ];
 
   let tabs = studentTabs;
@@ -92,13 +92,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
   }
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 z-40 ${role === UserRole.ADMIN ? 'max-w-md mx-auto lg:hidden' : 'max-w-md mx-auto'}`}>
+    <nav className={`fixed bottom-0 left-0 right-0 w-full max-w-full sm:max-w-md sm:mx-auto bg-card-light dark:bg-card-dark border-t border-slate-200 dark:border-border-dark z-40 ${role === UserRole.ADMIN || role === UserRole.TEACHER ? 'lg:hidden' : ''}`}>
       <div className="flex justify-around items-center h-16 px-2">
         {tabs.map((tab) => {
           const isActive = isTabActive(tab.path);
           return (
             <button
-              key={tab.label}
+              key={tab.path}
               onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
                 isActive ? 'text-primary' : 'text-text-secondary-light dark:text-text-secondary-dark'
@@ -107,7 +107,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
               <span className={`material-symbols-outlined ${isActive ? 'fill' : ''}`}>
                 {tab.icon}
               </span>
-              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+              <span className="text-[10px] font-medium leading-none">{t(tab.labelKey)}</span>
             </button>
           );
         })}

@@ -443,7 +443,7 @@ const TaskDetailView: React.FC = () => {
         <div className="flex items-center justify-between">
           <button 
             onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-card-dark/90"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -451,13 +451,13 @@ const TaskDetailView: React.FC = () => {
           <div className="flex gap-2">
             <button 
               onClick={() => setShowEditModal(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-primary"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-card-dark/90 text-primary"
             >
               <span className="material-symbols-outlined">edit</span>
             </button>
             <button 
               onClick={() => setShowDeleteModal(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-card-dark/90 text-red-500"
             >
               <span className="material-symbols-outlined">delete</span>
             </button>
@@ -468,7 +468,7 @@ const TaskDetailView: React.FC = () => {
       {/* Content */}
       <div className="flex-1 px-4 pb-24 overflow-y-auto">
         {/* Main Info Card */}
-        <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
+        <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-border-dark mb-4">
           <div className="flex items-start gap-3 mb-4">
             <div className={`w-14 h-14 rounded-xl ${statusConfigGroup.bg} ${statusConfigGroup.text} flex items-center justify-center shrink-0`}>
               <span className="material-symbols-outlined text-[28px]">{getCategoryIcon(homework.category)}</span>
@@ -521,7 +521,7 @@ const TaskDetailView: React.FC = () => {
 
         {/* Assigned Students Card - for individual assignments */}
         {homework.assignmentType === 'individual' && homework.studentIds && homework.studentIds.length > 0 && (
-          <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
+          <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-border-dark mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">people</span>
@@ -546,7 +546,7 @@ const TaskDetailView: React.FC = () => {
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
                     student.submitted 
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-100'
+                      : 'bg-slate-50 dark:bg-card-dark/50 border-slate-100 dark:border-border-dark opacity-100'
                   }`}
                   style={{ pointerEvents: 'auto', zIndex: 1 }}
                 >
@@ -604,7 +604,7 @@ const TaskDetailView: React.FC = () => {
 
         {/* Group Students Card - for group assignments */}
         {homework.assignmentType === 'group' && homework.groupStudents && homework.groupStudents.length > 0 && (
-          <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
+          <div className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-border-dark mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">groups</span>
@@ -628,7 +628,7 @@ const TaskDetailView: React.FC = () => {
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
                     student.submitted
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-100'
+                      : 'bg-slate-50 dark:bg-card-dark/50 border-slate-100 dark:border-border-dark opacity-100'
                   }`}
                   style={{ pointerEvents: 'auto', zIndex: 1 }}
                 >
@@ -685,11 +685,11 @@ const TaskDetailView: React.FC = () => {
 
         {/* Stats Card */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-center">
+          <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-border-dark text-center">
             <span className="text-2xl font-bold text-primary">{homework.assignments.length}</span>
             <p className="text-xs text-slate-500 mt-1">Assignments</p>
           </div>
-          <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-center">
+          <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-border-dark text-center">
             <span className="text-2xl font-bold text-primary">{totalImages}</span>
             <p className="text-xs text-slate-500 mt-1">Total Images</p>
           </div>
@@ -699,7 +699,7 @@ const TaskDetailView: React.FC = () => {
         <div className="space-y-4">
           <h3 className="font-bold text-lg">Assignments</h3>
           {homework.assignments.length === 0 ? (
-            <div className="bg-card-light dark:bg-card-dark rounded-xl p-6 text-center border border-slate-100 dark:border-slate-800">
+            <div className="bg-card-light dark:bg-card-dark rounded-xl p-6 text-center border border-slate-100 dark:border-border-dark">
               <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">folder_off</span>
               <p className="text-slate-500">No assignments yet</p>
             </div>
@@ -707,7 +707,7 @@ const TaskDetailView: React.FC = () => {
             homework.assignments.map((assignment) => (
               <div 
                 key={assignment._id}
-                className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800"
+                className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-border-dark"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <span className="material-symbols-outlined text-primary">folder</span>
@@ -746,15 +746,15 @@ const TaskDetailView: React.FC = () => {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowEditModal(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
+          <div className="relative w-full max-w-md bg-white dark:bg-card-dark rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-border-dark">
               <button 
                 onClick={() => {
                   setShowEditModal(false);
                   if (homework) initEditForm(homework);
                 }}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-card-dark/90 rounded-lg"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -781,7 +781,7 @@ const TaskDetailView: React.FC = () => {
                   {editTasks.map((task, index) => (
                     <div 
                       key={task.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"
+                      className="border border-slate-200 dark:border-border-dark rounded-xl p-3"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-slate-400 uppercase">Task {index + 1}</span>
@@ -799,7 +799,7 @@ const TaskDetailView: React.FC = () => {
                         placeholder="Title *"
                         value={task.title}
                         onChange={(e) => updateEditTaskTitle(task.id, e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent mb-2 focus:outline-none focus:border-primary"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent mb-2 focus:outline-none focus:border-primary"
                       />
                       <input
                         type="file"
@@ -886,7 +886,7 @@ const TaskDetailView: React.FC = () => {
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary resize-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary resize-none"
                     />
                   </div>
 
@@ -898,7 +898,7 @@ const TaskDetailView: React.FC = () => {
                       type="datetime-local"
                       value={editDeadline}
                       onChange={(e) => setEditDeadline(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -912,7 +912,7 @@ const TaskDetailView: React.FC = () => {
                         placeholder="https://"
                         value={editLink}
                         onChange={(e) => setEditLink(e.target.value)}
-                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary"
+                        className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary"
                       />
                       <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">link</span>
                     </div>
@@ -951,7 +951,7 @@ const TaskDetailView: React.FC = () => {
                   <select
                     value={editGroupId}
                     onChange={(e) => setEditGroupId(e.target.value)}
-                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                    className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-border-dark bg-transparent focus:outline-none focus:border-primary appearance-none cursor-pointer"
                   >
                     <option value="">Select Group</option>
                     {groups.map(group => (
@@ -975,7 +975,7 @@ const TaskDetailView: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-border-dark rounded-lg">
                       {students.length === 0 ? (
                         <div className="p-4 text-center text-slate-500 text-sm">
                           No students found
@@ -984,7 +984,7 @@ const TaskDetailView: React.FC = () => {
                         students.map(student => (
                           <label 
                             key={student._id} 
-                            className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
+                            className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-card-dark/90 cursor-pointer border-b border-slate-100 dark:border-border-dark last:border-b-0"
                           >
                             <input
                               type="checkbox"
@@ -1010,7 +1010,7 @@ const TaskDetailView: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+            <div className="p-4 border-t border-slate-200 dark:border-border-dark flex gap-3">
               <button
                 onClick={() => {
                   setShowEditModal(false);
@@ -1054,7 +1054,7 @@ const TaskDetailView: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-border-dark font-medium"
               >
                 Cancel
               </button>
@@ -1097,7 +1097,7 @@ const TaskDetailView: React.FC = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowReviewModal(false)} />
           <div className="relative bg-background-light dark:bg-background-dark w-full max-w-md mx-4 sm:mx-auto rounded-2xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-border-dark">
               <div>
                 <h2 className="text-lg font-bold">{selectedStudent.fullName}</h2>
                 <p className="text-xs text-slate-500">
@@ -1106,7 +1106,7 @@ const TaskDetailView: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-card-dark/90"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -1117,7 +1117,7 @@ const TaskDetailView: React.FC = () => {
               {homework.assignments.length > 0 && (
                 <div className="mb-4 flex items-center justify-between">
                   <button
-                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-card-dark/90"
                     onClick={() => setCurrentAssignmentIdx(idx => Math.max(0, idx - 1))}
                     disabled={currentAssignmentIdx === 0}
                   >
@@ -1127,7 +1127,7 @@ const TaskDetailView: React.FC = () => {
                     Task {currentAssignmentIdx + 1} / {homework.assignments.length}
                   </span>
                   <button
-                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-card-dark/90"
                     onClick={() => setCurrentAssignmentIdx(idx => Math.min(homework.assignments.length - 1, idx + 1))}
                     disabled={currentAssignmentIdx === homework.assignments.length - 1}
                   >
@@ -1169,7 +1169,7 @@ const TaskDetailView: React.FC = () => {
                       )}
                     </div>
                     {/* Student answer info */}
-                    <div className="p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                    <div className="p-4 rounded-xl border-2 border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-symbols-outlined text-blue-400">person</span>
                         <span className="font-semibold text-blue-700 dark:text-blue-300 text-sm">Student's Answer</span>
@@ -1208,13 +1208,13 @@ const TaskDetailView: React.FC = () => {
               })()}
 
               {/* Feedback Input */}
-              <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+              <div className="bg-card-light dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-border-dark">
                 <label className="block text-sm font-medium mb-2">Feedback</label>
                 <textarea
                   value={reviewFeedback}
                   onChange={(e) => setReviewFeedback(e.target.value)}
                   placeholder="Write feedback for the student..."
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none min-h-[80px]"
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-slate-800 text-sm resize-none min-h-[80px]"
                   disabled={!selectedStudent.submitted}
                 />
               </div>
@@ -1325,10 +1325,10 @@ const TaskDetailView: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 mb-5 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+            <div className="p-4 mb-5 border-t border-slate-200 dark:border-border-dark flex gap-2">
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-medium"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-border-dark font-medium"
               >
                 Close
               </button>

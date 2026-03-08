@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import Loader from '@/components/Loader';
-import Logo from '../logo-bg.png';
+const DEFAULT_LOGO = '/logo-bg.png';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GroupInfo {
   _id: string;
@@ -73,6 +74,7 @@ const getProfileImageUrl = (url?: string) => {
 };
 
 const ParentChildDetailView: React.FC = () => {
+  const t = useTranslation();
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'homeworks' | 'ranking'>('overview');
@@ -89,6 +91,7 @@ const ParentChildDetailView: React.FC = () => {
   const [homeworkFilter, setHomeworkFilter] = useState<'all' | 'pending' | 'submitted' | 'graded' | 'overdue'>('all');
   const [rankingPeriod, setRankingPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
   const [rankingLoading, setRankingLoading] = useState(false);
+  const [headerLogoUrl, setHeaderLogoUrl] = useState<string>(DEFAULT_LOGO);
 
   // Get the period date range label
   const getPeriodLabel = () => {
@@ -127,11 +130,13 @@ const ParentChildDetailView: React.FC = () => {
         });
         
         if (!ignore && response.data.success) {
-          const { student, stats, homeworks, ranking } = response.data.data;
+          const { student, stats, homeworks, ranking, organization } = response.data.data;
           setStudent(student);
           setStats(stats);
           setHomeworks(homeworks);
           setRanking(ranking);
+          const logo = organization?.logo;
+          setHeaderLogoUrl(logo ? (logo.startsWith('http') ? logo : `${API_BASE_URL}${logo}`) : DEFAULT_LOGO);
         }
       } catch (err: any) {
         if (err.name !== 'CanceledError' && !ignore) {
@@ -190,7 +195,7 @@ const ParentChildDetailView: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'graded': return 'bg-green-100 text-green-600 dark:bg-green-900/30';
-      case 'submitted': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30';
+      case 'submitted': return 'bg-primary/20 text-primary dark:bg-primary/30';
       case 'pending': return 'bg-orange-100 text-orange-600 dark:bg-orange-900/30';
       case 'overdue': return 'bg-red-100 text-red-600 dark:bg-red-900/30';
       default: return 'bg-slate-100 text-slate-600 dark:bg-slate-700';
@@ -199,8 +204,11 @@ const ParentChildDetailView: React.FC = () => {
 
   const getStatusText = (homework: Homework) => {
     const status = getHomeworkStatus(homework);
-    if (status === 'graded') return homework.submission?.status || 'Graded';
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    if (status === 'graded') return homework.submission?.status || t('parent_graded');
+    if (status === 'pending') return t('student_pending');
+    if (status === 'submitted') return t('student_submitted');
+    if (status === 'overdue') return t('student_overdue');
+    return status;
   };
 
   const filteredHomeworks = homeworks.filter(hw => {
@@ -220,16 +228,19 @@ const ParentChildDetailView: React.FC = () => {
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-4 pt-12 pb-6 rounded-b-3xl relative overflow-hidden">
-        {/* Background Logo */}
-        <img 
-          src={Logo} 
-          alt="" 
-          className="absolute -top-6 -right-6 w-48 h-48 object-contain opacity-55 pointer-events-none"
-        />
-        <button onClick={() => navigate('/parent/home')} className="flex items-center gap-1 mb-4 text-blue-100 relative z-10">
+      <div className="bg-gradient-to-br from-primary to-primary-dark text-white p-4 pt-12 pb-6 rounded-b-3xl relative overflow-hidden">
+        {/* Background Logo: markaz yoki Do HomeWork */}
+        {headerLogoUrl && (
+          <img 
+            src={headerLogoUrl} 
+            alt="" 
+            className="absolute -top-2 -right-2 w-28 h-28 sm:w-36 sm:h-36 object-contain opacity-50 pointer-events-none"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
+        <button onClick={() => navigate('/parent/home')} className="flex items-center gap-1 mb-4 text-white/90 relative z-10">
           <span className="material-symbols-outlined">arrow_back</span>
-          Back
+          {t('parent_detail_back')}
         </button>
         
         <div className="flex items-center gap-4 relative z-10">
@@ -244,9 +255,9 @@ const ParentChildDetailView: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold capitalize">{student?.fullName}</h1>
-            <p className="text-blue-100 text-sm">
+            <p className="text-white/90 text-sm">
               <span className="material-symbols-outlined text-sm align-middle mr-1">groups</span>
-              {student?.group?.name || 'No group'}
+              {student?.group?.name || t('students_modal_no_group')}
             </p>
           </div>
         </div>
@@ -256,15 +267,15 @@ const ParentChildDetailView: React.FC = () => {
           <div className="flex gap-4 mt-4 overflow-x-auto pb-2 relative z-10">
             <div className="bg-white/20 rounded-xl px-4 py-2 min-w-fit">
               <p className="text-2xl font-bold">{stats.totalPoints}</p>
-              <p className="text-xs text-blue-100">Total Points</p>
+              <p className="text-xs text-white/90">{t('parent_detail_total_points')}</p>
             </div>
             <div className="bg-white/20 rounded-xl px-4 py-2 min-w-fit">
               <p className="text-2xl font-bold">#{ranking?.childRank || '-'}</p>
-              <p className="text-xs text-blue-100">Rank</p>
+              <p className="text-xs text-white/90">{t('parent_detail_rank')}</p>
             </div>
             <div className="bg-white/20 rounded-xl px-4 py-2 min-w-fit">
               <p className="text-2xl font-bold">{stats.completionRate}%</p>
-              <p className="text-xs text-blue-100">Completion</p>
+              <p className="text-xs text-white/90">{t('parent_detail_completion')}</p>
             </div>
           </div>
         )}
@@ -278,11 +289,11 @@ const ParentChildDetailView: React.FC = () => {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               activeTab === tab
-                ? 'bg-blue-500 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                ? 'bg-primary text-white'
+                : 'bg-slate-100 dark:bg-card-dark text-slate-600 dark:text-slate-400'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'overview' ? t('parent_detail_overview') : tab === 'homeworks' ? t('parent_detail_homeworks') : t('parent_detail_ranking')}
           </button>
         ))}
       </div>
@@ -292,18 +303,18 @@ const ParentChildDetailView: React.FC = () => {
         {/* Overview Tab */}
         {activeTab === 'overview' && stats && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
-              <h3 className="font-bold mb-4">Progress Overview</h3>
+            <div className="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-border-dark">
+              <h3 className="font-bold mb-4">{t('parent_detail_progress_overview')}</h3>
               
               {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-500">Homework Completion</span>
+                  <span className="text-slate-500">{t('parent_detail_homework_completion')}</span>
                   <span className="font-medium">{stats.completionRate}%</span>
                 </div>
                 <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
+                    className="h-full bg-gradient-to-r from-primary to-primary-dark rounded-full transition-all"
                     style={{ width: `${stats.completionRate}%` }}
                   />
                 </div>
@@ -316,16 +327,16 @@ const ParentChildDetailView: React.FC = () => {
                     <span className="material-symbols-outlined text-orange-600">schedule</span>
                     <div>
                       <p className="text-lg font-bold text-orange-600">{stats.pendingCount}</p>
-                      <p className="text-xs text-orange-600">Pending</p>
+                      <p className="text-xs text-orange-600">{t('student_pending')}</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">
+                <div className="bg-primary/10 dark:bg-primary/20 rounded-xl p-3">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-blue-600">upload</span>
+                    <span className="material-symbols-outlined text-primary">upload</span>
                     <div>
-                      <p className="text-lg font-bold text-blue-600">{stats.submittedCount}</p>
-                      <p className="text-xs text-blue-600">Submitted</p>
+                      <p className="text-lg font-bold text-primary">{stats.submittedCount}</p>
+                      <p className="text-xs text-primary">{t('student_submitted')}</p>
                     </div>
                   </div>
                 </div>
@@ -334,7 +345,7 @@ const ParentChildDetailView: React.FC = () => {
                     <span className="material-symbols-outlined text-green-600">check_circle</span>
                     <div>
                       <p className="text-lg font-bold text-green-600">{stats.gradedCount}</p>
-                      <p className="text-xs text-green-600">Graded</p>
+                      <p className="text-xs text-green-600">{t('parent_graded')}</p>
                     </div>
                   </div>
                 </div>
@@ -343,7 +354,7 @@ const ParentChildDetailView: React.FC = () => {
                     <span className="material-symbols-outlined text-red-600">warning</span>
                     <div>
                       <p className="text-lg font-bold text-red-600">{stats.overdueCount}</p>
-                      <p className="text-xs text-red-600">Overdue</p>
+                      <p className="text-xs text-red-600">{t('student_overdue')}</p>
                     </div>
                   </div>
                 </div>
@@ -351,14 +362,14 @@ const ParentChildDetailView: React.FC = () => {
             </div>
 
             {/* Total Summary */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+            <div className="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-border-dark">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Total Homeworks</p>
+                  <p className="text-sm text-slate-500">{t('parent_detail_total_homeworks')}</p>
                   <p className="text-2xl font-bold">{stats.totalHomeworks}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-slate-500">Completed</p>
+                  <p className="text-sm text-slate-500">{t('parent_completed')}</p>
                   <p className="text-2xl font-bold text-green-600">{stats.submittedCount + stats.gradedCount}</p>
                 </div>
               </div>
@@ -372,22 +383,22 @@ const ParentChildDetailView: React.FC = () => {
             {/* Filter - Same as StudentHomeView */}
             <div className="flex gap-2 overflow-x-auto pb-2">
               {[
-                { key: 'all', label: 'All' },
-                { key: 'pending', label: 'Pending' },
-                { key: 'submitted', label: 'Submitted' },
-                { key: 'graded', label: 'Graded' },
-                { key: 'overdue', label: 'Overdue' }
+                { key: 'all', labelKey: 'parent_detail_all' },
+                { key: 'pending', labelKey: 'student_pending' },
+                { key: 'submitted', labelKey: 'student_submitted' },
+                { key: 'graded', labelKey: 'parent_graded' },
+                { key: 'overdue', labelKey: 'student_overdue' }
               ].map(f => (
                 <button
                   key={f.key}
                   onClick={() => setHomeworkFilter(f.key as any)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
                     homeworkFilter === f.key
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800'
+                      ? 'bg-primary text-white'
+                      : 'bg-slate-100 dark:bg-card-dark'
                   }`}
                 >
-                  {f.label}
+                  {t(f.labelKey)}
                 </button>
               ))}
             </div>
@@ -395,7 +406,7 @@ const ParentChildDetailView: React.FC = () => {
             {filteredHomeworks.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
                 <span className="material-symbols-outlined text-4xl mb-2">assignment</span>
-                <p>No homeworks found</p>
+                <p>{t('parent_detail_no_homeworks')}</p>
               </div>
             ) : (
               filteredHomeworks.map(hw => {
@@ -403,7 +414,7 @@ const ParentChildDetailView: React.FC = () => {
                 return (
                   <div 
                     key={hw._id}
-                    className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700"
+                    className="bg-white dark:bg-card-dark rounded-xl p-4 border border-slate-100 dark:border-border-dark"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h4 className="font-medium flex-1">{hw.description}</h4>
@@ -427,7 +438,7 @@ const ParentChildDetailView: React.FC = () => {
 
                     {hw.submission?.teacherComment && (
                       <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-sm">
-                        <span className="text-slate-500">Teacher comment: </span>
+                        <span className="text-slate-500">{t('parent_detail_teacher_comment')} </span>
                         {hw.submission.teacherComment}
                       </div>
                     )}
@@ -444,20 +455,20 @@ const ParentChildDetailView: React.FC = () => {
             {/* Time Period Filter */}
             <div className="flex gap-2 justify-center">
               {[
-                { key: 'weekly', label: 'Weekly' },
-                { key: 'monthly', label: 'Monthly' },
-                { key: 'yearly', label: 'Yearly' }
+                { key: 'weekly', labelKey: 'ranking_weekly' },
+                { key: 'monthly', labelKey: 'ranking_monthly' },
+                { key: 'yearly', labelKey: 'ranking_yearly' }
               ].map((period) => (
                 <button
                   key={period.key}
                   onClick={() => setRankingPeriod(period.key as 'weekly' | 'monthly' | 'yearly')}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     rankingPeriod === period.key
-                      ? 'bg-blue-500 text-white shadow-md'
+                      ? 'bg-primary text-white shadow-md'
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  {period.label}
+                  {t(period.labelKey)}
                 </button>
               ))}
             </div>
@@ -479,24 +490,24 @@ const ParentChildDetailView: React.FC = () => {
               <>
                 {/* Child's Position */}
                 {ranking.childData && (
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl p-4">
+                  <div className="bg-gradient-to-br from-primary to-primary-dark text-white rounded-2xl p-4">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
                         #{ranking.childRank}
                       </div>
                       <div>
-                    <p className="text-blue-100 text-sm">Current Position</p>
-                    <p className="text-xl font-bold">{ranking.childData.totalPoints} points</p>
-                    <p className="text-blue-100 text-sm">out of {ranking.totalStudents} students</p>
+                    <p className="text-white/90 text-sm">{t('parent_detail_current_position')}</p>
+                    <p className="text-xl font-bold">{ranking.childData.totalPoints} {t('parent_detail_points')}</p>
+                    <p className="text-white/90 text-sm">{t('parent_detail_out_of_students').replace('{n}', String(ranking.totalStudents))}</p>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Top 5 */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-bold">Top 5 Students</h3>
+            <div className="bg-white dark:bg-card-dark rounded-2xl border border-slate-100 dark:border-border-dark overflow-hidden">
+              <div className="p-4 border-b border-slate-100 dark:border-border-dark">
+                <h3 className="font-bold">{t('parent_detail_top_5')}</h3>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-700">
                 {ranking.rankings.slice(0, 5).map((item, index) => {
@@ -504,7 +515,7 @@ const ParentChildDetailView: React.FC = () => {
                   return (
                     <div 
                       key={item.student._id}
-                      className={`p-4 flex items-center gap-3 ${isChild ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                      className={`p-4 flex items-center gap-3 ${isChild ? 'bg-primary/10 dark:bg-primary/20' : ''}`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                         index === 0 ? 'bg-yellow-400 text-yellow-900' :
@@ -514,7 +525,7 @@ const ParentChildDetailView: React.FC = () => {
                       }`}>
                         {index + 1}
                       </div>
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center overflow-hidden">
                         {item.student.profileImage ? (
                           <img src={getProfileImageUrl(item.student.profileImage)} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -522,15 +533,15 @@ const ParentChildDetailView: React.FC = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium truncate capitalize ${isChild ? 'text-blue-600' : ''}`}>
+                        <p className={`font-medium truncate capitalize ${isChild ? 'text-primary' : ''}`}>
                           {item.student.fullName}
-                          {isChild && <span className="text-xs ml-1">(Your child)</span>}
+                          {isChild && <span className="text-xs ml-1">{t('parent_detail_your_child')}</span>}
                         </p>
-                        <p className="text-xs text-slate-500">{item.gradedCount} graded</p>
+                        <p className="text-xs text-slate-500">{item.gradedCount} {t('parent_detail_graded')}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-green-600">{item.totalPoints}</p>
-                        <p className="text-xs text-slate-500">points</p>
+                        <p className="text-xs text-slate-500">{t('parent_detail_points')}</p>
                       </div>
                     </div>
                   );
@@ -544,10 +555,10 @@ const ParentChildDetailView: React.FC = () => {
                     <span className="material-symbols-outlined text-orange-500">info</span>
                     <div>
                       <p className="text-orange-700 dark:text-orange-400 font-medium">
-                        Your child is currently ranked #{ranking.childRank}
+                        {t('parent_detail_ranked').replace('{n}', String(ranking.childRank))}
                       </p>
                       <p className="text-orange-600 dark:text-orange-500 text-sm mt-1">
-                        Unfortunately, your child is not in the top 5 yet. Encourage them to complete more homework and earn better grades to climb up the rankings!
+                        {t('parent_detail_not_top_5')}
                       </p>
                     </div>
                   </div>

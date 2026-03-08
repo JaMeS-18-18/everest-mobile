@@ -25,6 +25,16 @@ interface Group {
   updatedAt: string;
 }
 
+const CREATE_GROUP_DAYS = [
+  { key: 'Monday', label: 'Du' },
+  { key: 'Tuesday', label: 'Se' },
+  { key: 'Wednesday', label: 'Ch' },
+  { key: 'Thursday', label: 'Pa' },
+  { key: 'Friday', label: 'Ju' },
+  { key: 'Saturday', label: 'Sh' },
+  { key: 'Sunday', label: 'Ya' },
+];
+
 const GroupsView: React.FC = () => {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
@@ -32,24 +42,23 @@ const GroupsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('user') || '{}'));
+  // Create Group modal
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [groupForm, setGroupForm] = useState({
+    name: '',
+    startTime: '09:00',
+    endTime: '10:30',
+    daysOfWeek: [] as string[],
+  });
+  const [createGroupError, setCreateGroupError] = useState('');
+  const [isCreateGroupSubmitting, setIsCreateGroupSubmitting] = useState(false);
+
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
   const getProfileImageUrl = (url?: string) => {
     if (!url) return undefined;
     if (url.startsWith('http')) return url;
     return `${API_BASE_URL}${url}`;
   };
-
-  useEffect(() => {
-    // Always fetch latest user info from /auth/me
-    api.get('/auth/me').then(res => {
-      if (res.data.success && res.data.user) {
-        setUser(res.data.user);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-      }
-    });
-  }, []);
-
 
   useEffect(() => {
     fetchGroups();
@@ -91,6 +100,51 @@ const GroupsView: React.FC = () => {
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const toggleGroupDay = (day: string) => {
+    setGroupForm(prev => ({
+      ...prev,
+      daysOfWeek: prev.daysOfWeek.includes(day)
+        ? prev.daysOfWeek.filter(d => d !== day)
+        : [...prev.daysOfWeek, day],
+    }));
+  };
+
+  const handleCreateGroup = async () => {
+    setCreateGroupError('');
+    if (!groupForm.name.trim()) {
+      setCreateGroupError('Guruh nomi kiritilishi shart');
+      return;
+    }
+    if (!groupForm.startTime || !groupForm.endTime) {
+      setCreateGroupError('Boshlash va tugash vaqtini kiriting');
+      return;
+    }
+    if (groupForm.daysOfWeek.length === 0) {
+      setCreateGroupError('Kamida bitta kunni tanlang');
+      return;
+    }
+    setIsCreateGroupSubmitting(true);
+    try {
+      const res = await api.post('/groups', {
+        name: groupForm.name,
+        startTime: groupForm.startTime,
+        endTime: groupForm.endTime,
+        daysOfWeek: groupForm.daysOfWeek,
+      });
+      if (res.data.success) {
+        setIsCreateGroupOpen(false);
+        setGroupForm({ name: '', startTime: '09:00', endTime: '10:30', daysOfWeek: [] });
+        fetchGroups();
+      } else {
+        setCreateGroupError(res.data.message || 'Guruh yaratib bo\'lmadi');
+      }
+    } catch (err: any) {
+      setCreateGroupError(err?.response?.data?.message || 'Guruh yaratib bo\'lmadi');
+    } finally {
+      setIsCreateGroupSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -110,71 +164,10 @@ const GroupsView: React.FC = () => {
     );
   }
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 pt-12">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                {user?.profileImage ? (
-                  <img
-                    src={getProfileImageUrl(user.profileImage) || 'https://picsum.photos/seed/profile/200/200'}
-                    alt={user.fullName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="material-symbols-outlined text-primary text-2xl">person</span>
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-slate-500 font-medium">{getGreeting()},</span>
-              <div className='flex'>
-                <span className="text-lg font-bold">{user.fullName || 'Teacher'}</span>
-                {/* <motion.img
-              src={archaIcon}
-              alt="archa"
-              width={20}
-              height={20}
-              initial={{ rotate: 0 }}
-              animate={{ rotate: [0, 8, -8, 6, -6, 0] }}
-              transition={{
-                duration: 0.6,      // qimirlash vaqti (qisqa)
-                repeat: Infinity,
-                repeatDelay: 2,     // har 2 sekundda bir
-                ease: "easeInOut",
-              }}
-              style={{
-                objectFit: "contain",
-                marginLeft: "3px",
-                filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))",
-                transformOrigin: "center bottom", // qo‘ng‘iroq effekti uchun MUHIM
-              }}
-            /> */}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/settings')}
-            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined text-slate-500">settings</span>
-          </button>
-        </div>
-        <h1 className="text-[32px] font-bold tracking-tight mb-4">My Groups</h1>
-      </div>
-
-      <div className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pt-0">
-        <div className="flex items-center bg-white dark:bg-slate-800 h-12 rounded-xl shadow-sm px-4 border border-transparent focus-within:border-primary/50 transition-all">
+      <div className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-2 pt-4 pb-2 sm:px-4">
+        <div className="flex items-center bg-white dark:bg-card-dark h-12 rounded-xl shadow-sm px-4 border border-transparent focus-within:border-primary/50 transition-all">
           <span className="material-symbols-outlined text-text-secondary-light">search</span>
           <input
             type="text"
@@ -186,7 +179,7 @@ const GroupsView: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 pb-24">
+      <div className="px-2 space-y-4 pb-24 sm:px-4">
         {filteredGroups.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light">
             <span className="material-symbols-outlined text-4xl mb-2">folder_off</span>
@@ -197,7 +190,7 @@ const GroupsView: React.FC = () => {
             <div
               key={group._id}
               onClick={() => navigate(`/groups/${group._id}`)}
-              className="group relative flex items-stretch justify-between gap-4 rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all cursor-pointer"
+              className="group relative flex items-stretch justify-between gap-4 rounded-2xl bg-card-light dark:bg-card-dark p-4 shadow-sm border border-slate-100 dark:border-border-dark hover:shadow-lg transition-all cursor-pointer"
             >
               <div className="flex flex-col justify-between flex-1">
                 <div>
@@ -213,7 +206,7 @@ const GroupsView: React.FC = () => {
                     {allDays.map(day => {
                       const isActive = group.daysOfWeek.some(d => getDayAbbr(d) === day);
                       return (
-                        <span key={day} className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-bold ${isActive ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        <span key={day} className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-bold ${isActive ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-card-dark text-slate-400'
                           }`}>
                           {day.slice(0, 2)}
                         </span>
@@ -252,15 +245,100 @@ const GroupsView: React.FC = () => {
         )}
       </div>
 
-      <div className="fixed bottom-24 right-0 left-0 z-30 flex justify-end max-w-md mx-auto px-6 pointer-events-none">
+      {/* FAB — o'ng pastda, o'quvchi qo'shish bilan bir xil joylashuv */}
+      <div className="fixed z-30 bottom-20 right-4 sm:right-6 lg:bottom-8 lg:right-8">
         <button
-          onClick={() => navigate('/groups/create')}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all pointer-events-auto"
-          style={{ boxShadow: '0 4px 32px 0 rgba(45,140,240,0.10)' }}
+          onClick={() => setIsCreateGroupOpen(true)}
+          className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-all hover:bg-primary-dark"
+          style={{ boxShadow: '0 4px 20px rgba(5, 171, 196, 0.35)' }}
+          aria-label="Guruh qo'shish"
         >
-          <span className="material-symbols-outlined text-[32px]">add</span>
+          <span className="material-symbols-outlined text-[28px]">add</span>
         </button>
       </div>
+
+      {/* Create Group Modal */}
+      {isCreateGroupOpen && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/50 p-0 lg:p-4">
+          <div className="bg-white dark:bg-card-dark rounded-t-3xl lg:rounded-2xl w-full max-w-md lg:max-w-xl flex flex-col shadow-xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-border-dark shrink-0">
+              <h3 className="text-lg font-bold">Yangi guruh</h3>
+              <button
+                onClick={() => { setIsCreateGroupOpen(false); setCreateGroupError(''); }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-card-dark/90 rounded-lg"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {createGroupError && (
+                <div className="text-red-500 text-sm text-center">{createGroupError}</div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-0.5">Guruh nomi *</label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={groupForm.name}
+                  onChange={e => setGroupForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Masalan: Pre-IELTS"
+                  maxLength={50}
+                  className="w-full h-11 bg-slate-50 dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl px-3 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jadval</label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-0.5">Boshlash</label>
+                    <input
+                      type="time"
+                      value={groupForm.startTime}
+                      onChange={e => setGroupForm(prev => ({ ...prev, startTime: e.target.value }))}
+                      className="w-full h-11 bg-slate-50 dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl px-3 text-base"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-0.5">Tugash</label>
+                    <input
+                      type="time"
+                      value={groupForm.endTime}
+                      onChange={e => setGroupForm(prev => ({ ...prev, endTime: e.target.value }))}
+                      className="w-full h-11 bg-slate-50 dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl px-3 text-base"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Qaysi kunlarda *</p>
+                <div className="flex flex-wrap gap-2">
+                  {CREATE_GROUP_DAYS.map(day => (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => toggleGroupDay(day.key)}
+                      className={`w-10 h-10 rounded-full text-sm font-bold border border-slate-200 dark:border-border-dark transition-all ${
+                        groupForm.daysOfWeek.includes(day.key)
+                          ? 'bg-primary text-white'
+                          : 'bg-slate-100 dark:bg-card-dark text-slate-400'
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleCreateGroup}
+                disabled={isCreateGroupSubmitting}
+                className="w-full h-11 bg-primary text-white font-bold rounded-xl disabled:opacity-50"
+              >
+                {isCreateGroupSubmitting ? 'Yuklanmoqda...' : 'Guruh yaratish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

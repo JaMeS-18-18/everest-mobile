@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../api';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface TimeSlot {
   startTime: string;
@@ -57,8 +58,12 @@ const DURATION_OPTIONS = [
   { value: 240, label: '4 hours' },
 ];
 
+const DAY_LABEL_KEYS = ['schedule_sunday', 'schedule_monday', 'schedule_tuesday', 'schedule_wednesday', 'schedule_thursday', 'schedule_friday', 'schedule_saturday'] as const;
+const DAY_SHORT_KEYS = ['schedule_sun', 'schedule_mon', 'schedule_tue', 'schedule_wed', 'schedule_thu', 'schedule_fri', 'schedule_sat'] as const;
+
 export default function StudentAppointmentView() {
   const navigate = useNavigate();
+  const t = useTranslation();
   const [activeTab, setActiveTab] = useState<'book' | 'my'>('book');
   const [supportTeachers, setSupportTeachers] = useState<SupportTeacher[]>([]);
   const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
@@ -324,7 +329,7 @@ export default function StudentAppointmentView() {
     try {
       await api.post('/appointments', pendingBookingData);
 
-      toast.success('Appointment booked! Please wait for confirmation.');
+      toast.success(t('appointment_toast_booked'));
       setShowModal(false);
       setShowWarningModal(false);
       setSelectedTeacher(null);
@@ -345,7 +350,7 @@ export default function StudentAppointmentView() {
   const handleCancelAppointment = async (id: string) => {
     try {
       await api.put(`/appointments/${id}/cancel`);
-      toast.success('Appointment cancelled');
+      toast.success(t('appointment_toast_cancelled'));
       setConfirmCancelId(null);
       fetchMyAppointments();
     } catch (error) {
@@ -359,25 +364,25 @@ export default function StudentAppointmentView() {
       pending: 'bg-yellow-100 text-yellow-700',
       approved: 'bg-green-100 text-green-700',
       rejected: 'bg-red-100 text-red-700',
-      completed: 'bg-blue-100 text-blue-700',
+      completed: 'bg-primary/10 text-primary',
       cancelled: 'bg-gray-100 text-gray-700'
     };
-    const labels: Record<string, string> = {
-      pending: 'Pending',
-      approved: 'Approved',
-      rejected: 'Rejected',
-      completed: 'Completed',
-      cancelled: 'Cancelled'
+    const labelKeys: Record<string, string> = {
+      pending: 'appointment_status_pending',
+      approved: 'appointment_status_approved',
+      rejected: 'appointment_status_rejected',
+      completed: 'appointment_status_completed',
+      cancelled: 'appointment_status_cancelled'
     };
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
+        {t(labelKeys[status] || status)}
       </span>
     );
   };
 
   const getDayLabel = (dayOfWeek: number) => {
-    return DAYS_OF_WEEK.find(d => d.value === dayOfWeek)?.label || '';
+    return t(DAY_LABEL_KEYS[dayOfWeek as keyof typeof DAY_LABEL_KEYS] || '');
   };
 
   // Calculate the next occurrence of a day of week
@@ -399,25 +404,25 @@ export default function StudentAppointmentView() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-orange-50 to-amber-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 rounded-b-3xl shadow-lg">
         <div className="flex items-center gap-3 mb-2">
           <button onClick={() => navigate(-1)} className="p-1">
             ←
           </button>
           <span className="text-3xl">📋</span>
-          <h1 className="text-2xl font-bold">Book Appointment</h1>
+          <h1 className="text-2xl font-bold">{t('appointment_title')}</h1>
         </div>
-        <p className="text-purple-100 text-sm">
-          Schedule a session with support teachers
+        <p className="text-white/90 text-sm">
+          {t('appointment_subtitle')}
         </p>
       </div>
 
@@ -426,20 +431,20 @@ export default function StudentAppointmentView() {
         <button
           onClick={() => setActiveTab('book')}
           className={`flex-1 py-3 rounded-lg font-medium transition-colors ${activeTab === 'book'
-            ? 'bg-purple-600 text-white'
+            ? 'bg-orange-500 text-white'
             : 'text-gray-600 hover:bg-gray-100'
             }`}
         >
-          Book
+          {t('appointment_tab_book')}
         </button>
         <button
           onClick={() => setActiveTab('my')}
           className={`flex-1 py-3 rounded-lg font-medium transition-colors ${activeTab === 'my'
-            ? 'bg-purple-600 text-white'
+            ? 'bg-orange-500 text-white'
             : 'text-gray-600 hover:bg-gray-100'
             }`}
         >
-          My Appointments
+          {t('appointment_tab_my')}
         </button>
       </div>
 
@@ -453,9 +458,9 @@ export default function StudentAppointmentView() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">🚫</span>
                   <div>
-                    <h3 className="font-bold text-red-700">You are temporarily blocked</h3>
+                    <h3 className="font-bold text-red-700">{t('appointment_blocked_title')}</h3>
                     <p className="text-sm text-red-600 mt-1">
-                      You missed a booked appointment. You can book again in {blockStatus.daysLeft} days.
+                      {t('appointment_blocked_message').replace('{n}', String(blockStatus.daysLeft ?? 0))}
                     </p>
                   </div>
                 </div>
@@ -465,12 +470,12 @@ export default function StudentAppointmentView() {
             {supportTeachers.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl">
                 <span className="text-6xl block mb-4">😔</span>
-                <p className="text-gray-500">No teachers with available slots at the moment</p>
+                <p className="text-gray-500">{t('appointment_no_teachers')}</p>
               </div>
             ) : blockStatus?.blocked ? (
               <div className="text-center py-12 bg-white rounded-2xl opacity-50">
                 <span className="text-6xl block mb-4">📅</span>
-                <p className="text-gray-500">Booking is temporarily disabled</p>
+                <p className="text-gray-500">{t('appointment_booking_disabled')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -481,21 +486,21 @@ export default function StudentAppointmentView() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
                           {teacher.fullName.charAt(0)}
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-800">{teacher.fullName}</h3>
                           <p className="text-sm text-gray-500">
-                            {teacher.schedules.length} days available
+                            {teacher.schedules.length} {t('appointment_days_available')}
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => handleSelectTeacher(teacher)}
-                        className="px-4 py-2 bg-purple-100 text-purple-600 rounded-xl font-medium hover:bg-purple-200 transition-colors"
+                        className="px-4 py-2 bg-orange-100 text-orange-600 rounded-xl font-medium hover:bg-orange-200 transition-colors"
                       >
-                        Book
+                        {t('appointment_btn_book')}
                       </button>
                     </div>
 
@@ -520,12 +525,12 @@ export default function StudentAppointmentView() {
             {myAppointments.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl">
                 <span className="text-6xl block mb-4">📭</span>
-                <p className="text-gray-500">You haven't booked any appointments yet</p>
+                <p className="text-gray-500">{t('appointment_no_appointments')}</p>
                 <button
                   onClick={() => setActiveTab('book')}
-                  className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-xl font-medium"
+                  className="mt-4 px-6 py-2 bg-orange-500 text-white rounded-xl font-medium"
                 >
-                  Book Now
+                  {t('appointment_book_now')}
                 </button>
               </div>
             ) : (
@@ -539,7 +544,7 @@ export default function StudentAppointmentView() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-gray-800">
-                            {appointment.supportTeacherId?.fullName || 'Unknown'}
+                            {appointment.supportTeacherId?.fullName || t('appointment_unknown')}
                           </h3>
                           {getStatusBadge(appointment.status)}
                         </div>
@@ -554,7 +559,7 @@ export default function StudentAppointmentView() {
                         </p>
                         {appointment.status === 'rejected' && appointment.rejectionReason && (
                           <p className="text-sm text-red-500 mt-2">
-                            ❌ Reason: {appointment.rejectionReason}
+                            ❌ {t('appointment_rejection_reason')} {appointment.rejectionReason}
                           </p>
                         )}
                       </div>
@@ -582,7 +587,7 @@ export default function StudentAppointmentView() {
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Book Appointment</h2>
+                <h2 className="text-xl font-bold text-gray-800">{t('appointment_modal_title')}</h2>
                 <p className="text-sm text-gray-500">{selectedTeacher.fullName}</p>
               </div>
               <button
@@ -598,7 +603,7 @@ export default function StudentAppointmentView() {
               {/* Day of Week Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📅 Select Day
+                  📅 {t('appointment_select_day')}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {DAYS_OF_WEEK.map((day) => {
@@ -613,11 +618,11 @@ export default function StudentAppointmentView() {
                         className={`py-3 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${!isAvailable
                           ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
                           : selectedDayOfWeek === day.value
-                            ? 'border-purple-500 bg-purple-50 text-purple-700'
-                            : 'border-gray-200 hover:border-purple-300 text-gray-700'
+                            ? 'border-orange-500 bg-orange-50 text-orange-700'
+                            : 'border-gray-200 hover:border-orange-300 text-gray-700'
                           }`}
                       >
-                        {day.short}
+                        {t(DAY_SHORT_KEYS[day.value as keyof typeof DAY_SHORT_KEYS])}
                         {isAvailable && (
                           <span className="block text-xs text-green-500 mt-1">✓</span>
                         )}
@@ -633,13 +638,13 @@ export default function StudentAppointmentView() {
                   {loadingSlots ? (
                     <div className="flex flex-col items-center justify-center py-8 bg-gray-50 rounded-xl">
                       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-3"></div>
-                      <p className="text-gray-500 text-sm">Loading available times...</p>
+                      <p className="text-gray-500 text-sm">{t('appointment_loading_times')}</p>
                     </div>
                   ) : availableRanges.length > 0 ? (
                     <>
                       {/* Available time ranges info */}
                       <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                        <p className="text-sm text-green-700 font-medium mb-1">✅ Available times:</p>
+                        <p className="text-sm text-green-700 font-medium mb-1">✅ {t('appointment_available_times')}</p>
                         {availableRanges.map((range, idx) => (
                           <p key={idx} className="text-sm text-green-700">
                             <strong>{range.startTime} - {range.endTime}</strong>
@@ -653,7 +658,7 @@ export default function StudentAppointmentView() {
                       {/* Start Time Selection */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          ⏰ Start Time
+                          ⏰ {t('appointment_start_time')}
                         </label>
                         {availableStartTimes.length > 0 ? (
                           <div className="grid grid-cols-4 gap-2">
@@ -667,8 +672,8 @@ export default function StudentAppointmentView() {
                                   className={`py-2 px-3 rounded-xl border-2 text-sm font-medium transition-colors ${!available
                                     ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
                                     : selectedStartTime === time
-                                      ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                      : 'border-gray-200 hover:border-purple-300'
+                                      ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                      : 'border-gray-200 hover:border-orange-300'
                                     }`}
                                 >
                                   {time}
@@ -678,7 +683,7 @@ export default function StudentAppointmentView() {
                           </div>
                         ) : (
                           <p className="text-center py-4 text-gray-500 bg-gray-50 rounded-xl">
-                            No available time on this day
+                            {t('appointment_no_time_today')}
                           </p>
                         )}
                       </div>
@@ -687,7 +692,7 @@ export default function StudentAppointmentView() {
                       {selectedStartTime && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            ⏱️ Duration (min 30 min, max 4 hours)
+                            ⏱️ {t('appointment_duration')}
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             {DURATION_OPTIONS.map((option) => {
@@ -700,8 +705,8 @@ export default function StudentAppointmentView() {
                                   className={`py-2 px-3 rounded-xl border-2 text-sm font-medium transition-colors ${!valid
                                     ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
                                     : selectedDuration === option.value
-                                      ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                      : 'border-gray-200 hover:border-purple-300'
+                                      ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                      : 'border-gray-200 hover:border-orange-300'
                                     }`}
                                 >
                                   {option.label}
@@ -714,9 +719,9 @@ export default function StudentAppointmentView() {
 
                       {/* Selected Time Summary */}
                       {selectedStartTime && (
-                        <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                          <p className="text-purple-800 font-medium text-center">
-                            🕐 Selected time: <strong>{selectedStartTime} - {getEndTime()}</strong>
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                          <p className="text-orange-800 font-medium text-center">
+                            🕐 {t('appointment_selected_time')} <strong>{selectedStartTime} - {getEndTime()}</strong>
                           </p>
                         </div>
                       )}
@@ -724,8 +729,8 @@ export default function StudentAppointmentView() {
                   ) : (
                     <div className="text-center py-6 bg-red-50 rounded-xl">
                       <span className="text-4xl block mb-2">😔</span>
-                      <p className="text-red-600">No available time on this day</p>
-                      <p className="text-red-400 text-sm mt-1">Please select another day</p>
+                      <p className="text-red-600">{t('appointment_no_time_today')}</p>
+                      <p className="text-red-400 text-sm mt-1">{t('appointment_select_another_day')}</p>
                     </div>
                   )}
                 </>
@@ -734,13 +739,13 @@ export default function StudentAppointmentView() {
               {/* Reason */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ✏️ What do you need help with?
+                  ✏️ {t('appointment_reason_label')}
                 </label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g., Need help with Math, exam preparation..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  placeholder={t('appointment_reason_placeholder')}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   rows={3}
                   maxLength={500}
                 />
@@ -753,13 +758,13 @@ export default function StudentAppointmentView() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || selectedDayOfWeek === null || !selectedStartTime || !reason.trim()}
-                className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {submitting ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
                 ) : (
                   <>
-                    ✅ Book Appointment
+                    ✅ {t('appointment_confirm_btn')}
                   </>
                 )}
               </button>
@@ -774,20 +779,20 @@ export default function StudentAppointmentView() {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
             <div className="text-center">
               <span className="text-5xl block mb-4">⚠️</span>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">Cancel Appointment?</h3>
-              <p className="text-gray-500 text-sm mb-6">Are you sure you want to cancel this appointment?</p>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{t('appointment_cancel_confirm_title')}</h3>
+              <p className="text-gray-500 text-sm mb-6">{t('appointment_cancel_confirm_message')}</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmCancelId(null)}
                   className="flex-1 py-3 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50"
                 >
-                  No
+                  {t('appointment_no')}
                 </button>
                 <button
                   onClick={() => handleCancelAppointment(confirmCancelId)}
                   className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600"
                 >
-                  Yes, Cancel
+                  {t('appointment_yes_cancel')}
                 </button>
               </div>
             </div>
@@ -801,23 +806,23 @@ export default function StudentAppointmentView() {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
             <div className="text-center">
               <span className="text-5xl block mb-4">⚠️</span>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">Important Notice!</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{t('appointment_notice_title')}</h3>
               <div className="text-left bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
                 <p className="text-sm text-gray-700 mb-2">
-                  <strong>Please note:</strong>
+                  <strong>{t('appointment_notice_intro')}</strong>
                 </p>
                 <ul className="text-sm text-gray-600 space-y-2">
                   <li className="flex items-start gap-2">
                     <span>📌</span>
-                    <span>If you don't attend the booked session, you will be <strong className="text-red-600">blocked from booking for 2 weeks</strong>.</span>
+                    <span>{t('appointment_notice_blocked')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span>📌</span>
-                    <span>Make sure you can attend before confirming.</span>
+                    <span>{t('appointment_notice_attend')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span>📌</span>
-                    <span>If you can't attend, please cancel in advance.</span>
+                    <span>{t('appointment_notice_cancel_advance')}</span>
                   </li>
                 </ul>
               </div>
@@ -829,14 +834,14 @@ export default function StudentAppointmentView() {
                   }}
                   className="flex-1 py-3 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('settings_cancel')}
                 </button>
                 <button
                   onClick={confirmBooking}
                   disabled={submitting}
-                  className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50"
+                  className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50"
                 >
-                  {submitting ? 'Booking...' : 'I Understand, Book'}
+                  {submitting ? t('appointment_booking_loading') : t('appointment_understand_book')}
                 </button>
               </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Loader from '@/components/Loader';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GroupInfo {
   _id: string;
@@ -50,6 +51,7 @@ const getProfileImageUrl = (url?: string) => {
 };
 
 const ParentHomeView: React.FC = () => {
+  const t = useTranslation();
   const navigate = useNavigate();
   const [children, setChildren] = useState<ChildWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +74,7 @@ const ParentHomeView: React.FC = () => {
         }
       } catch (err: any) {
         if (err.name !== 'CanceledError' && !ignore) {
-          setError(err.response?.data?.message || 'Failed to load children');
+          setError(err.response?.data?.message || t('parent_failed_load'));
         }
       } finally {
         if (!ignore) {
@@ -106,19 +108,19 @@ const ParentHomeView: React.FC = () => {
             )}
           </div>
           <div>
-            <p className="text-purple-100 text-sm">Welcome back,</p>
-            <h1 className="text-xl font-bold capitalize">{user.fullName || 'Parent'}</h1>
+            <p className="text-purple-100 text-sm">{t('parent_welcome_back')}</p>
+            <h1 className="text-xl font-bold capitalize">{user.fullName || t('nav_parent')}</h1>
           </div>
         </div>
         <p className="text-purple-100 text-sm">
           <span className="material-symbols-outlined text-sm align-middle mr-1">family_restroom</span>
-          {children.length} {children.length === 1 ? 'child' : 'children'} registered
+          {children.length} {children.length === 1 ? t('parent_child_registered_one') : t('parent_children_registered')}
         </p>
       </div>
 
       {/* Content */}
       <div className="p-4 -mt-4">
-        <h2 className="text-lg font-bold mb-4">My Children</h2>
+        <h2 className="text-lg font-bold mb-4">{t('parent_my_children')}</h2>
 
         {error && (
           <div className="bg-red-100 dark:bg-red-900/30 text-red-600 p-4 rounded-xl mb-4">
@@ -129,8 +131,8 @@ const ParentHomeView: React.FC = () => {
         {children.length === 0 ? (
           <div className="text-center py-12 text-text-secondary-light dark:text-text-secondary-dark">
             <span className="material-symbols-outlined text-5xl mb-3">child_care</span>
-            <p>No children assigned yet</p>
-            <p className="text-sm mt-1">Please contact your teacher</p>
+            <p>{t('parent_no_children')}</p>
+            <p className="text-sm mt-1">{t('parent_contact_teacher')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -154,7 +156,7 @@ const ParentHomeView: React.FC = () => {
                     <h3 className="font-bold text-lg capitalize truncate">{child.fullName}</h3>
                     <p className="text-sm text-slate-500 truncate">
                       <span className="material-symbols-outlined text-sm align-middle mr-1">groups</span>
-                      {child.groupId?.name || 'No group'}
+                      {child.groupId?.name || t('students_modal_no_group')}
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-slate-400">chevron_right</span>
@@ -165,15 +167,15 @@ const ParentHomeView: React.FC = () => {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
                       <p className="text-2xl font-bold text-green-600">{child.stats.totalPoints}</p>
-                      <p className="text-xs text-green-600">Points</p>
+                      <p className="text-xs text-green-600">{t('parent_points')}</p>
                     </div>
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
                       <p className="text-2xl font-bold text-blue-600">{child.stats.completionRate}%</p>
-                      <p className="text-xs text-blue-600">Completed</p>
+                      <p className="text-xs text-blue-600">{t('parent_completed')}</p>
                     </div>
                     <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-center">
                       <p className="text-2xl font-bold text-purple-600">{child.stats.gradedCount}</p>
-                      <p className="text-xs text-purple-600">Graded</p>
+                      <p className="text-xs text-purple-600">{t('parent_graded')}</p>
                     </div>
                   </div>
                 )}

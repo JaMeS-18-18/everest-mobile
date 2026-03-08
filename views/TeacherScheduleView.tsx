@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import Loader from '@/components/Loader';
+import { useTranslation, useLanguage } from '../contexts/LanguageContext';
 
 interface GroupSchedule {
   _id: string;
@@ -20,7 +21,14 @@ interface PracticeLesson {
   description: string;
 }
 
+const WEEK_DAY_KEYS = ['schedule_mon', 'schedule_tue', 'schedule_wed', 'schedule_thu', 'schedule_fri', 'schedule_sat', 'schedule_sun'] as const;
+const FULL_DAY_KEYS = ['schedule_monday', 'schedule_tuesday', 'schedule_wednesday', 'schedule_thursday', 'schedule_friday', 'schedule_saturday', 'schedule_sunday'] as const;
+
+const localeByLang: Record<string, string> = { eng: 'en-US', ru: 'ru-RU', uz: 'uz-UZ' };
+
 const TeacherScheduleView: React.FC = () => {
+  const t = useTranslation();
+  const { lang } = useLanguage();
   const [groups, setGroups] = useState<GroupSchedule[]>([]);
   const [practiceLessons, setPracticeLessons] = useState<PracticeLesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,14 +68,14 @@ const TeacherScheduleView: React.FC = () => {
         setPracticeLessons(practiceResponse.data.data);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch schedule');
+      setError(err instanceof Error ? err.message : t('schedule_fetch_error'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const weekDays = WEEK_DAY_KEYS.map(k => t(k));
+  const fullDayNames = FULL_DAY_KEYS.map(k => t(k));
 
   const getCurrentDayIndex = () => {
     const today = new Date().getDay();
@@ -85,10 +93,11 @@ const TeacherScheduleView: React.FC = () => {
     return { bg: 'bg-primary', light: 'bg-primary/10 dark:bg-primary/20', text: 'text-primary dark:text-primary' };
   };
 
+  const dayNamesEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const getClassesForDay = (dayIndex: number) => {
-    const dayName = fullDayNames[dayIndex];
+    const dayName = dayNamesEn[dayIndex] || '';
     return groups
-      .filter(group => group.daysOfWeek.includes(dayName))
+      .filter(group => group.daysOfWeek && group.daysOfWeek.includes(dayName))
       .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
   };
 
@@ -199,27 +208,27 @@ const TeacherScheduleView: React.FC = () => {
           onClick={fetchData}
           className="px-6 py-3 bg-primary text-white rounded-xl font-medium"
         >
-          Retry
+          {t('schedule_retry')}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-card-dark pb-24">
       {/* Header */}
       <div className="bg-gradient-to-br from-primary to-primary-dark text-white p-4 pt-12 pb-6 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold">My Schedule</h1>
-            <p className="text-white/80 text-sm">{groups.length} groups</p>
+            <h1 className="text-xl font-bold">{t('nav_schedule')}</h1>
+            <p className="text-white/80 text-sm">{groups.length} {t('schedule_groups')}</p>
           </div>
           <button
             onClick={handleAddPractice}
             className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl transition-colors"
           >
             <span className="material-symbols-outlined text-sm">add</span>
-            <span className="text-sm font-medium">Practice</span>
+            <span className="text-sm font-medium">{t('schedule_practice')}</span>
           </button>
         </div>
 
@@ -273,12 +282,12 @@ const TeacherScheduleView: React.FC = () => {
               {fullDayNames[selectedDayIndex]}
               {isToday(selectedDayIndex) && (
                 <span className="ml-2 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
-                  Today
+                  {t('schedule_today')}
                 </span>
               )}
             </h2>
             <p className="text-slate-500 text-sm">
-              {getDateForDay(selectedDayIndex).toLocaleDateString('en-US', { 
+              {getDateForDay(selectedDayIndex).toLocaleDateString(localeByLang[lang] || 'en-US', { 
                 month: 'long', 
                 day: 'numeric',
                 year: 'numeric'
@@ -286,15 +295,15 @@ const TeacherScheduleView: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+            <div className="bg-slate-100 dark:bg-card-dark px-3 py-1 rounded-full">
               <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                {classesForSelectedDay.length} classes
+                {classesForSelectedDay.length} {t('schedule_classes')}
               </span>
             </div>
             {practicesForSelectedDay.length > 0 && (
               <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
                 <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
-                  {practicesForSelectedDay.length} practice
+                  {practicesForSelectedDay.length} {t('schedule_practice_count')}
                 </span>
               </div>
             )}
@@ -305,21 +314,21 @@ const TeacherScheduleView: React.FC = () => {
       {/* Classes List */}
       <div className="px-4 space-y-3">
         {classesForSelectedDay.length === 0 && practicesForSelectedDay.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center">
+          <div className="bg-white dark:bg-card-dark rounded-2xl p-8 text-center">
             <span className="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3">
               beach_access
             </span>
             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              No Classes
+              {t('schedule_no_classes')}
             </h3>
             <p className="text-slate-500 text-sm mb-4">
-              Enjoy your free day! 🎉
+              {t('schedule_free_day')}
             </p>
             <button
               onClick={handleAddPractice}
               className="text-primary text-sm font-medium"
             >
-              + Add Practice Lesson
+              {t('schedule_add_practice_lesson')}
             </button>
           </div>
         ) : (
@@ -342,7 +351,7 @@ const TeacherScheduleView: React.FC = () => {
               return (
                 <div
                   key={group._id}
-                  className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 ${
+                  className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-border-dark ${
                     active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
                   }`}
                 >
@@ -358,17 +367,17 @@ const TeacherScheduleView: React.FC = () => {
                             {active && (
                               <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
                                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                Now
+                                {t('schedule_now')}
                               </span>
                             )}
                             {upcoming && (
                               <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
-                                Soon
+                                {t('schedule_soon')}
                               </span>
                             )}
                             {ended && (
                               <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
-                                Done
+                                {t('schedule_done')}
                               </span>
                             )}
                           </div>
@@ -397,13 +406,14 @@ const TeacherScheduleView: React.FC = () => {
                       {active && (
                         <div className="mt-3">
                           <div className="flex justify-between text-xs text-slate-500 mb-1">
-                            <span>In progress</span>
+                            <span>{t('schedule_in_progress')}</span>
                             <span>
                               {(() => {
                                 const now = new Date();
                                 const currentMinutes = now.getHours() * 60 + now.getMinutes();
                                 const endMinutes = timeToMinutes(group.endTime);
-                                return `${endMinutes - currentMinutes} min left`;
+                                const mins = endMinutes - currentMinutes;
+                                return `${mins} ${t('schedule_min_left')}`;
                               })()}
                             </span>
                           </div>
@@ -447,7 +457,7 @@ const TeacherScheduleView: React.FC = () => {
               return (
                 <div
                   key={practice._id}
-                  className={`bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border-2 border-dashed border-orange-300 dark:border-orange-700 ${
+                  className={`bg-white dark:bg-card-dark rounded-2xl overflow-hidden shadow-sm border-2 border-dashed border-orange-300 dark:border-orange-700 ${
                     active ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900' : ''
                   }`}
                 >
@@ -458,22 +468,22 @@ const TeacherScheduleView: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-medium bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">
-                              Practice
+                              {t('schedule_practice')}
                             </span>
                             {active && (
                               <span className="flex items-center gap-1 text-xs font-medium bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
                                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                Now
+                                {t('schedule_now')}
                               </span>
                             )}
                             {upcoming && (
                               <span className="text-xs font-medium bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">
-                                Soon
+                                {t('schedule_soon')}
                               </span>
                             )}
                             {ended && (
                               <span className="text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">
-                                Done
+                                {t('schedule_done')}
                               </span>
                             )}
                           </div>
@@ -524,9 +534,9 @@ const TeacherScheduleView: React.FC = () => {
       {/* Week Overview */}
       <div className="px-4 mt-6">
         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
-          Week Overview
+          {t('schedule_week_overview')}
         </h3>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+        <div className="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-border-dark">
           <div className="grid grid-cols-7 gap-1 text-center">
             {weekDays.map((day, index) => {
               const classes = getClassesForDay(index);
@@ -563,25 +573,25 @@ const TeacherScheduleView: React.FC = () => {
       {/* Practice Modal */}
       {showPracticeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white dark:bg-card-dark rounded-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4">
-              <h2 className="text-xl font-bold text-white">Add Practice Lesson</h2>
-              <p className="text-orange-100 text-sm">Schedule an extra class</p>
+              <h2 className="text-xl font-bold text-white">{t('schedule_add_practice_modal_title')}</h2>
+              <p className="text-orange-100 text-sm">{t('schedule_add_practice_modal_subtitle')}</p>
             </div>
             
             <div className="p-4 space-y-4">
               {/* Group Select */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Group
+                  {t('schedule_group_label')}
                 </label>
                 <select
                   value={practiceForm.groupId}
                   onChange={(e) => setPracticeForm({ ...practiceForm, groupId: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-slate-800 dark:text-white"
                 >
-                  <option value="">Select group</option>
-                  <option value="all" className="font-semibold">📢 All Groups</option>
+                  <option value="">{t('schedule_select_group')}</option>
+                  <option value="all" className="font-semibold">📢 {t('schedule_all_groups')}</option>
                   {groups.map(g => (
                     <option key={g._id} value={g._id}>{g.name}</option>
                   ))}
@@ -591,13 +601,13 @@ const TeacherScheduleView: React.FC = () => {
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Date
+                  {t('schedule_date')}
                 </label>
                 <input
                   type="date"
                   value={practiceForm.date}
                   onChange={(e) => setPracticeForm({ ...practiceForm, date: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-slate-800 dark:text-white"
                 />
               </div>
 
@@ -605,24 +615,24 @@ const TeacherScheduleView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Start Time
+                    {t('schedule_start_time')}
                   </label>
                   <input
                     type="time"
                     value={practiceForm.startTime}
                     onChange={(e) => setPracticeForm({ ...practiceForm, startTime: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-slate-800 dark:text-white"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    End Time
+                    {t('schedule_end_time')}
                   </label>
                   <input
                     type="time"
                     value={practiceForm.endTime}
                     onChange={(e) => setPracticeForm({ ...practiceForm, endTime: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-slate-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -630,14 +640,14 @@ const TeacherScheduleView: React.FC = () => {
               {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Description (optional)
+                  {t('schedule_description_optional')}
                 </label>
                 <textarea
                   value={practiceForm.description}
                   onChange={(e) => setPracticeForm({ ...practiceForm, description: e.target.value })}
-                  placeholder="e.g., Exam preparation"
+                  placeholder={t('schedule_description_placeholder')}
                   rows={2}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-slate-800 dark:text-white resize-none"
                 />
               </div>
             </div>
@@ -645,16 +655,16 @@ const TeacherScheduleView: React.FC = () => {
             <div className="flex gap-3 p-4 pt-0">
               <button
                 onClick={() => setShowPracticeModal(false)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-border-dark text-slate-600 dark:text-slate-400 font-medium"
               >
-                Cancel
+                {t('settings_cancel')}
               </button>
               <button
                 onClick={handleSavePractice}
                 disabled={!practiceForm.groupId || isSaving}
                 className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-medium disabled:opacity-50"
               >
-                {isSaving ? 'Saving...' : 'Add Practice'}
+                {isSaving ? t('schedule_saving') : t('schedule_add_practice_btn')}
               </button>
             </div>
           </div>

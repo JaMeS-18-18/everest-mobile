@@ -7,7 +7,11 @@ import AdminTeachersView from './views/AdminTeachersView';
 import AdminDashboardView from './views/AdminDashboardView';
 import AdminTeacherDetailView from './views/AdminTeacherDetailView';
 import AdminStudentsView from './views/AdminStudentsView';
+import AdminAssistantTeachersView from './views/AdminAssistantTeachersView';
+import AdminParentsView from './views/AdminParentsView';
+import AdminGroupsView from './views/AdminGroupsView';
 import AdminLayout from './components/AdminLayout';
+import TeacherLayoutGuard from './components/TeacherLayoutGuard';
 import GroupsView from './views/GroupsView';
 import GroupDetailView from './views/GroupDetailView';
 import StudentsView from './views/StudentsView';
@@ -16,8 +20,6 @@ import TasksView from './views/TasksView';
 import TaskDetailView from './views/TaskDetailView';
 import NotificationsView from './views/NotificationsView';
 import SettingsView from './views/SettingsView';
-import CreateGroupView from './views/CreateGroupView';
-import CreateStudentView from './views/CreateStudentView';
 import SubmitHomeworkView from './views/SubmitHomeworkView';
 import GradingView from './views/GradingView';
 import StudentHomeView from './views/StudentHomeView';
@@ -39,13 +41,14 @@ import SupportTeacherGroupsView from './views/SupportTeacherGroupsView';
 import SupportTeacherScheduleView from './views/SupportTeacherScheduleView';
 import StudentAppointmentView from './views/StudentAppointmentView';
 import SupportTeacherAppointmentsView from './views/SupportTeacherAppointmentsView';
+import AppHeader from './components/AppHeader';
 
 const App: React.FC = () => {
-  // Example: dark mode state (can be expanded as needed)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const stored = localStorage.getItem('darkMode');
     return stored === 'true';
   });
+  const [teacherMobileMenuOpen, setTeacherMobileMenuOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,8 +117,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${role === UserRole.SUPERADMIN || role === UserRole.ADMIN ? 'max-w-none w-full bg-[#f0f9fc] dark:bg-slate-900' : 'max-w-md mx-auto bg-background-light dark:bg-background-dark'}`}>
-      <div className="flex-1">
+    <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${role === UserRole.SUPERADMIN || role === UserRole.ADMIN || role === UserRole.TEACHER ? 'max-w-none w-full bg-[#f0f9fc] dark:bg-background-dark' : 'w-full max-w-full sm:max-w-md sm:mx-auto bg-background-light dark:bg-background-dark'}`}>
+      {isLoggedIn && role !== UserRole.STUDENT && role !== UserRole.PARENT && (
+        <AppHeader
+          role={role}
+          onOpenTeacherMenu={() => setTeacherMobileMenuOpen(true)}
+          teacherMobileMenuOpen={teacherMobileMenuOpen}
+        />
+      )}
+      <div className={`flex-1 ${isLoggedIn && role !== UserRole.STUDENT && role !== UserRole.PARENT ? 'md:pt-14' : ''}`}>
         <Routes>
           <Route path="/login" element={<LoginPageWithClearStorage onLogin={handleLogin} />} />
           {!isLoggedIn ? (
@@ -137,22 +147,28 @@ const App: React.FC = () => {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardView />} />
               <Route path="students" element={<AdminStudentsView />} />
+              <Route path="assistant-teachers" element={<AdminAssistantTeachersView />} />
+              <Route path="parents" element={<AdminParentsView />} />
+              <Route path="groups" element={<AdminGroupsView />} />
               <Route path="teachers" element={<AdminTeachersView />} />
               <Route path="teacher/:teacherId" element={<AdminTeacherDetailView />} />
+              <Route path="teacher/:teacherId/group/:groupId" element={<GroupDetailView />} />
+              <Route path="teacher/:teacherId/group/:groupId/student/:studentId" element={<StudentProfileView />} />
               <Route path="settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
               </Route>
-              <Route path="/groups" element={<GroupsView />} />
-              <Route path="/groups/:groupId" element={<GroupDetailView />} />
-              <Route path="/groups/create" element={<CreateGroupView />} />
-              <Route path="/students" element={<StudentsView />} />
-              <Route path="/students/create" element={<CreateStudentView />} />
-              <Route path="/students/:studentId" element={<StudentProfileView />} />
-              <Route path="/tasks" element={<TasksView />} />
-              <Route path="/tasks/:taskId" element={<TaskDetailView />} />
-              <Route path="/teacher/schedule" element={<TeacherScheduleView />} />
-              <Route path="/notifications" element={<NotificationsView />} />
-              <Route path="/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} />} />
-              <Route path="/grading" element={<GradingView />} />
+              {/* Teacher: desktop = sidebar, mobile = hamburger in navbar (bottom nav olib tashlangan) */}
+              <Route element={<TeacherLayoutGuard role={role} onLogout={handleLogout} teacherMobileMenuOpen={teacherMobileMenuOpen} setTeacherMobileMenuOpen={setTeacherMobileMenuOpen} />}>
+                <Route path="/groups" element={<GroupsView />} />
+                <Route path="/groups/:groupId" element={<GroupDetailView />} />
+                <Route path="/students" element={<StudentsView />} />
+                <Route path="/students/:studentId" element={<StudentProfileView />} />
+                <Route path="/tasks" element={<TasksView />} />
+                <Route path="/tasks/:taskId" element={<TaskDetailView />} />
+                <Route path="/teacher/schedule" element={<TeacherScheduleView />} />
+                <Route path="/notifications" element={<NotificationsView />} />
+                <Route path="/settings" element={<SettingsView role={role!} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={handleLogout} onBack={() => navigate(role === UserRole.STUDENT ? '/student/home' : '/groups')} />} />
+                <Route path="/grading" element={<GradingView />} />
+              </Route>
               <Route path="/student/home" element={<StudentHomeView />} />
               <Route path="/student/schedule" element={<StudentScheduleView />} />
               <Route path="/student/ranking" element={<StudentRankingView />} />
@@ -182,7 +198,8 @@ const App: React.FC = () => {
       {isLoggedIn && role === UserRole.SUPPORT_TEACHER && location.pathname.startsWith('/support') && (
         <BottomNav role={role} />
       )}
-      {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && role !== UserRole.SUPPORT_TEACHER && location.pathname !== '/login' && location.pathname !== '/students/create' && location.pathname !== '/groups/create' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
+      {/* O'qituvchi: pastki menu yo'q; o'quvchi va boshqalar: bottom nav */}
+      {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && role !== UserRole.SUPPORT_TEACHER && role !== UserRole.TEACHER && location.pathname !== '/login' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
     </div>
