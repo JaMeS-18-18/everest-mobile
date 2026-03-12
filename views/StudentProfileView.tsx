@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { View } from '@/types';
 import Loader from '@/components/Loader';
+import { useTranslation } from '../contexts/LanguageContext';
 import StudentProgressCircle from '@/components/StudentProgressCircle';
 import { calculateStudentPotential, Status as TaskStatus } from '../utils/calculateStudentPotential';
 
@@ -16,6 +17,8 @@ interface GroupInfo {
   daysOfWeek: string[];
 }
 
+type StudentStatus = 'active' | 'finished' | 'left';
+
 interface Student {
   _id: string;
   fullName: string;
@@ -23,6 +26,8 @@ interface Student {
   username: string;
   groupId: GroupInfo;
   profileImage?: string;
+  status?: StudentStatus;
+  statusReason?: string;
 }
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/, '');
 
@@ -76,16 +81,24 @@ interface StudentProfileViewProps {
 
 const StudentProfileView: React.FC = () => {
   const { studentId } = useParams();
+  const t = useTranslation();
   const [student, setStudent] = useState<Student | null>(null);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'graded'>('all');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  // Date range state for progress
-  // Only custom date range for progress
   const [customRange, setCustomRange] = useState<{ from: string, to: string }>({ from: '', to: '' });
-  const [editForm, setEditForm] = useState({ fullName: '', phone: '', username: '', password: '', groupId: '' });
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    phone: '',
+    username: '',
+    password: '',
+    groupId: '',
+    isActive: true,
+    statusReason: '',
+    inactiveType: 'left' as 'finished' | 'left'
+  });
   const [groups, setGroups] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
@@ -95,12 +108,16 @@ const StudentProfileView: React.FC = () => {
         if (res.data.success) setGroups(res.data.data);
       });
       if (student) {
+        const st = student.status || 'active';
         setEditForm({
           fullName: student.fullName,
           phone: student.phone,
           username: student.username,
           password: '',
-          groupId: student.groupId?._id || ''
+          groupId: student.groupId?._id || '',
+          isActive: st === 'active',
+          statusReason: (student as { statusReason?: string }).statusReason || '',
+          inactiveType: st === 'finished' ? 'finished' : 'left'
         });
       }
     }
@@ -108,10 +125,13 @@ const StudentProfileView: React.FC = () => {
   const handleEditSave = async () => {
     setIsSaving(true);
     try {
-      const payload: { fullName: string; phone: string; username: string; password?: string } = {
+      const status: StudentStatus = editForm.isActive ? 'active' : editForm.inactiveType;
+      const payload: { fullName: string; phone: string; username: string; password?: string; status: StudentStatus; statusReason?: string } = {
         fullName: editForm.fullName,
         phone: editForm.phone,
-        username: editForm.username
+        username: editForm.username,
+        status,
+        statusReason: editForm.isActive ? '' : editForm.statusReason.trim()
       };
       if (editForm.password) payload.password = editForm.password;
       await api.put(`/students/${student?._id}`, payload);
@@ -359,6 +379,46 @@ const StudentProfileView: React.FC = () => {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">{t('student_status_label')}</label>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-sm font-medium ${!editForm.isActive ? 'text-slate-400' : 'text-slate-800 dark:text-white'}`}>{t('student_status_faol')}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={editForm.isActive}
+                        onClick={() => setEditForm(f => ({ ...f, isActive: !f.isActive, ...(f.isActive ? { statusReason: '' } : {}) }))}
+                        className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${editForm.isActive ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-6 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${editForm.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
+                      </button>
+                      <span className={`text-sm font-medium ${editForm.isActive ? 'text-slate-400' : 'text-slate-800 dark:text-white'}`}>{t('student_status_nofaol')}</span>
+                    </div>
+                    {!editForm.isActive && (
+                      <>
+                        <div className="mt-3 flex gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="inactiveType" checked={editForm.inactiveType === 'finished'} onChange={() => setEditForm(f => ({ ...f, inactiveType: 'finished' }))} className="rounded-full border-slate-300 text-primary focus:ring-primary" />
+                            <span className="text-sm">{t('student_status_finished')}</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="inactiveType" checked={editForm.inactiveType === 'left'} onChange={() => setEditForm(f => ({ ...f, inactiveType: 'left' }))} className="rounded-full border-slate-300 text-primary focus:ring-primary" />
+                            <span className="text-sm">{t('student_status_left')}</span>
+                          </label>
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-sm font-medium mb-1 block">{t('student_status_description')}</label>
+                          <textarea
+                            value={editForm.statusReason}
+                            onChange={e => setEditForm(f => ({ ...f, statusReason: e.target.value }))}
+                            placeholder={t('student_status_description_placeholder')}
+                            rows={3}
+                            className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setIsDeleteConfirm(true)} className="flex-1 h-12 rounded-lg border border-red-500 text-red-500 font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Delete</button>
@@ -397,6 +457,11 @@ const StudentProfileView: React.FC = () => {
         </div> */}
         <h1 className="text-2xl font-bold capitalize">{student.fullName}</h1>
         <p className="text-sm text-slate-500 font-medium mt-1">{student.phone}</p>
+        {(student.status === 'finished' || student.status === 'left') && (
+          <span className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${student.status === 'finished' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200'}`}>
+            {student.status === 'finished' ? t('student_status_finished') : t('student_status_left')}
+          </span>
+        )}
         {/* Progress date range filter: only start/end date */}
         <div className="flex gap-2 justify-center items-center mb-4 mt-2">
           <div className="relative">

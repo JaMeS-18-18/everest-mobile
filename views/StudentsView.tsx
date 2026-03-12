@@ -19,6 +19,7 @@ interface Student {
   createdAt: string;
   updatedAt: string;
   profileImage?: string;
+  status?: 'active' | 'finished' | 'left';
   parentId?: {
     _id: string;
     fullName: string;
@@ -442,12 +443,23 @@ const StudentsView: React.FC = () => {
                         <p className="text-sm text-primary mt-0.5">
                           {student.phone}
                         </p>
-                        {student.groupId?.name && (
-                          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium">
-                            <span className="material-symbols-outlined text-[14px]">groups</span>
-                            <span className="capitalize truncate max-w-[120px]">{student.groupId.name}</span>
-                          </div>
-                        )}
+                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                          {(student.status === 'finished' || student.status === 'left') ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                              {t('student_status_nofaol')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                              {t('student_status_faol')}
+                            </span>
+                          )}
+                            {student.groupId?.name && (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium">
+                              <span className="material-symbols-outlined text-[14px]">groups</span>
+                              <span className="capitalize truncate max-w-[120px]">{student.groupId.name}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 flex-shrink-0">
                         chevron_right

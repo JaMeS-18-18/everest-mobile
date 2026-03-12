@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
-// Version is injected at build time from package.json
+import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 import { UserRole } from '../types';
 import api from '../api';
 import Loader from '@/components/Loader';
 import { useLanguage, useTranslation } from '../contexts/LanguageContext';
 import type { LangCode } from '../contexts/LanguageContext';
+
+const DEFAULT_TELEGRAM_SUPPORT = 'https://t.me/dohomework_support';
 
 const LANGUAGE_OPTIONS: { code: LangCode; label: string }[] = [
   { code: 'eng', label: 'Eng' },
@@ -54,9 +56,14 @@ interface UserProfile {
   role: string;
   fullName: string;
   phone?: string;
-  studentInfo?: any;
+  studentInfo?: {
+    groupId?: {
+      teacherId?: { fullName?: string; telegram?: string };
+    };
+  };
   email?: string;
   profileImage?: string;
+  telegram?: string;
 }
 
 interface SupportTeacher {
@@ -78,6 +85,14 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api$/,
 
 const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDarkMode, onLogout, onBack }) => {
   const t = useTranslation();
+  const isTeacher = useMemo(
+    () => role === UserRole.TEACHER || String(role).toLowerCase() === 'teacher',
+    [role]
+  );
+  const isStudent = useMemo(
+    () => role === UserRole.STUDENT || String(role).toLowerCase() === 'student',
+    [role]
+  );
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -88,6 +103,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showProfilePreview, setShowProfilePreview] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -115,6 +131,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   const [orgLogoUrl, setOrgLogoUrl] = useState('');
   const [isSavingOrgLogo, setIsSavingOrgLogo] = useState(false);
 
+  // Teacher: my Telegram (for support link)
+  const [telegramValue, setTelegramValue] = useState('');
+  const [savingTelegram, setSavingTelegram] = useState(false);
+
   // Restore dark mode from localStorage on mount
   useEffect(() => {
     const storedDarkMode = localStorage.getItem('darkMode');
@@ -138,6 +158,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
     };
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (profile?.telegram !== undefined) setTelegramValue(profile.telegram || '');
+  }, [profile?.telegram]);
 
   useEffect(() => {
     if (role === UserRole.ADMIN) {
@@ -195,12 +219,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         setShowPasswordModal(false);
         setOldPassword('');
         setNewPassword('');
-        onLogout(); // Logout only if 200 and success
+        onLogout();
       } else {
-        setPasswordError(response.data.message || t('settings_error_password_failed'));
+        const msg = response.data.message || t('settings_error_password_failed');
+        setPasswordError(msg);
+        toast.error(t('settings_toast_password_error'));
       }
-    } catch (err: any) {
-      setPasswordError(err?.response?.data?.message || t('settings_error_password_failed'));
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || t('settings_error_password_failed');
+      setPasswordError(msg);
+      toast.error(t('settings_toast_password_error'));
     } finally {
       setIsChanging(false);
     }
@@ -326,32 +354,54 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
   };
 
   const handleUploadImage = async () => {
+    const fileInput = document.getElementById('profile-image-input') as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      setImageError(t('settings_error_no_file'));
+      toast.warning(t('settings_error_no_file'));
+      return;
+    }
     setUploadingImage(true);
     setImageError(null);
     try {
-      const fileInput = document.getElementById('profile-image-input') as HTMLInputElement;
-      const file = fileInput?.files?.[0];
-      if (!file) {
-        setImageError(t('settings_error_no_file'));
-        setUploadingImage(false);
-        return;
-      }
       const formData = new FormData();
       formData.append('image', file);
       const response = await api.post('/auth/upload-profile-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (response.data.success && response.data.url) {
         setImagePreview(null);
         setShowImageModal(false);
-        setProfile((prev) => prev ? { ...prev, profileImage: response.data.url } : prev);
+        setProfile((prev) => (prev ? { ...prev, profileImage: response.data.url } : prev));
+        toast.success(t('settings_toast_profile_image_saved'));
       } else {
-        setImageError(response.data.message || t('settings_error_upload_failed'));
+        const msg = response.data.message || t('settings_error_upload_failed');
+        setImageError(msg);
+        toast.error(t('settings_toast_profile_image_error'));
       }
-    } catch (err) {
+    } catch {
       setImageError(t('settings_error_upload_failed'));
+      toast.error(t('settings_toast_profile_image_error'));
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleSaveTelegram = async () => {
+    setSavingTelegram(true);
+    try {
+      const response = await api.patch('/auth/me', { telegram: telegramValue.trim() });
+      if (response.data.success && response.data.user) {
+        setProfile(response.data.user);
+        toast.success(t('settings_toast_telegram_saved'));
+      } else {
+        toast.error(response.data.message || t('settings_toast_telegram_error'));
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || t('settings_toast_telegram_error');
+      toast.error(msg);
+    } finally {
+      setSavingTelegram(false);
     }
   };
 
@@ -376,7 +426,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
       </header> */}
 
       <div className="p-4 flex flex-col items-center py-8">
-        <div className="relative mb-4 group cursor-pointer" onClick={() => setShowImageModal(true)}>
+        <div className="relative mb-4 group cursor-pointer" onClick={() => setShowProfilePreview(true)}>
           <img 
             src={getProfileImageUrl(profile?.profileImage) || "https://media.istockphoto.com/id/2168774111/vector/avatar-or-person-sign-profile-picture-portrait-icon-user-profile-symbol.jpg?s=612x612&w=0&k=20&c=6qw1LRG53z00RXJnVKQC58W7XnW2gdQfGBIR43E97Oc="}
             className="w-28 h-28 rounded-full border-4 border-white dark:border-border-dark shadow-sm object-cover" 
@@ -506,7 +556,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         </section>
 
         {/* Support Teachers Section - Only for Teachers */}
-        {(role === UserRole.TEACHER || role === 'teacher' || String(role).toLowerCase() === 'teacher') && (
+        {isTeacher && (
           <section>
             <div className="flex items-center justify-between px-2 pb-2">
               <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_support_teachers')}</h4>
@@ -560,18 +610,62 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
         <section>
           <h4 className="px-2 pb-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{t('settings_support')}</h4>
           <div className="bg-white dark:bg-card-dark rounded-xl overflow-hidden border border-slate-100 dark:border-border-dark divide-y divide-slate-100 dark:divide-border-dark">
-            <a
-              href="https://t.me/dohomework_support"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
-            >
-              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px]">send</span>
+            {/* O'qituvchi: o'z Telegramini kiritish va saqlash */}
+            {isTeacher && (
+              <div className="px-4 py-3 flex flex-col gap-2">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[20px]">send</span>
+                  </div>
+                  <span className="font-medium">{t('settings_my_telegram')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={telegramValue}
+                    onChange={(e) => setTelegramValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                    placeholder={t('settings_telegram_placeholder')}
+                    className="flex-1 min-w-0 h-10 px-3 rounded-lg border border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveTelegram}
+                    disabled={savingTelegram}
+                    className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {savingTelegram ? '...' : t('settings_save')}
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 font-medium">{t('settings_telegram')}</div>
-              <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-            </a>
+            )}
+            {/* Talaba: o'qituvchining Telegrami; o'qituvchi: o'zini; boshqalar: umumiy support */}
+            {(() => {
+              const teacherTelegram = profile?.studentInfo?.groupId?.teacherId?.telegram;
+              const myTelegram = profile?.telegram;
+              const telegramUsername = isStudent
+                ? teacherTelegram
+                : isTeacher
+                  ? myTelegram
+                  : null;
+              const href = telegramUsername
+                ? `https://t.me/${String(telegramUsername).replace(/^@/, '')}`
+                : DEFAULT_TELEGRAM_SUPPORT;
+              const label = isStudent ? t('settings_teacher_telegram') : t('settings_telegram');
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[20px]">send</span>
+                  </div>
+                  <div className="flex-1 font-medium">{label}</div>
+                  <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                </a>
+              );
+            })()}
             {/* <a
               href="tel:+998900292374"
               className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
@@ -661,6 +755,40 @@ const SettingsView: React.FC<SettingsViewProps> = ({ role, isDarkMode, setIsDark
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Profil rasmini katta ko'rinishda ko'rsatish */}
+      {showProfilePreview && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90"
+          onClick={() => setShowProfilePreview(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            onClick={(e) => { e.stopPropagation(); setShowProfilePreview(false); }}
+            aria-label={t('settings_cancel')}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+          <img
+            src={getProfileImageUrl(profile?.profileImage) || "https://media.istockphoto.com/id/2168774111/vector/avatar-or-person-sign-profile-picture-portrait-icon-user-profile-symbol.jpg?s=612x612&w=0&k=20&c=6qw1LRG53z00RXJnVKQC58W7XnW2gdQfGBIR43E97Oc="}
+            alt="Profile"
+            className="max-w-[90vw] max-h-[70vh] w-auto h-auto object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="mt-6 px-6 py-3 rounded-full bg-primary text-white font-bold shadow hover:bg-primary-dark transition"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowProfilePreview(false);
+              setShowImageModal(true);
+            }}
+          >
+            {t('settings_change_profile_image')}
+          </button>
         </div>
       )}
 

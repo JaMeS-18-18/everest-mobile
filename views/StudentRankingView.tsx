@@ -87,6 +87,8 @@ const StudentRankingView: React.FC = () => {
       if (data.success) {
         if (data.noGroup) {
           setError(data.message || t('ranking_no_group'));
+        } else if (data.noRanking) {
+          setError(data.message || t('ranking_frozen'));
         } else {
           setRankingData(data.data);
           setError(null);

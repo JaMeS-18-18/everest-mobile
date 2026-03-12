@@ -25,23 +25,41 @@ api.interceptors.request.use(
   }
 );
 
+const FROZEN_MODAL_KEY = 'showFrozenModal';
+
 // Response interceptor - xatolarni qayta ishlash
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
+    const status = error.response?.status;
+    const data = error.response?.data;
+
+    // 403 STUDENT_FROZEN - o'quvchi frozen (chiqarilgan/bitirgan), profilidan chiqarish
+    if (status === 403 && data?.code === 'STUDENT_FROZEN') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      try {
+        localStorage.setItem(FROZEN_MODAL_KEY, JSON.stringify({
+          status: data.status || null,
+          teacherTelegram: data.teacherTelegram || null
+        }));
+      } catch (_) {}
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
     // 401 - Unauthorized, token eskirgan
     const url = error?.config?.url || '';
-    if (
-      error.response?.status === 401 &&
-      (url.includes('/auth/me') || url.includes('/auth/login'))
-    ) {
+    if (status === 401 && (url.includes('/auth/me') || url.includes('/auth/login'))) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
     return Promise.reject(error);
   }
 );
+
+export { FROZEN_MODAL_KEY };
 
 export default api;

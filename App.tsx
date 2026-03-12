@@ -30,6 +30,7 @@ import TeacherScheduleView from './views/TeacherScheduleView';
 import BottomNav from './components/BottomNav';
 import SuperadminBottomNav from './components/SuperadminBottomNav';
 import SuperadminAdminsView from './views/SuperadminAdminsView';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SuperadminLayout from './components/SuperadminLayout';
 import SuperadminDashboardView from './views/SuperadminDashboardView';
@@ -202,6 +203,7 @@ const App: React.FC = () => {
       {isLoggedIn && role !== UserRole.SUPERADMIN && role !== UserRole.PARENT && role !== UserRole.SUPPORT_TEACHER && role !== UserRole.TEACHER && location.pathname !== '/login' && !location.pathname.startsWith('/student/homework') && !location.pathname.startsWith('/student/submit-homework') && (
         <BottomNav role={role || undefined} />
       )}
+      <ToastContainer position="top-center" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover theme="light" aria-label="Notifications" />
     </div>
   );
 };

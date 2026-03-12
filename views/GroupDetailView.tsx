@@ -6,6 +6,7 @@ import api from '../api';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from '@/components/Loader';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface Student {
   _id: string;
@@ -15,6 +16,7 @@ interface Student {
   points?: number;
   percent?: number;
   rank?: number;
+  status?: 'active' | 'finished' | 'left';
 }
 
 interface Group {
@@ -38,6 +40,7 @@ interface Group {
 const GroupDetailView: React.FC = () => {
   const { groupId, teacherId } = useParams<{ groupId?: string; teacherId?: string }>();
   const navigate = useNavigate();
+  const t = useTranslation();
   const isAdminContext = !!teacherId;
   const [group, setGroup] = useState<Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -365,7 +368,14 @@ const GroupDetailView: React.FC = () => {
                   {student.fullName.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{student.fullName}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold">{student.fullName}</h3>
+                    {(student.status === 'finished' || student.status === 'left') ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200">{t('student_status_nofaol')}</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">{t('student_status_faol')}</span>
+                    )}
+                  </div>
                   <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
                     {student.phone}
                   </p>
