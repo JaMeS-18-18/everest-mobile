@@ -12,10 +12,10 @@ interface Stats {
   groupCount: number;
 }
 
-interface TaskStats {
+interface TeacherStat {
+  teacherId: string;
+  fullName: string;
   total: number;
-  new: number;
-  pending: number;
   reviewed: number;
   overdue: number;
 }
@@ -29,13 +29,7 @@ const AdminDashboardView: React.FC = () => {
     parentCount: 0,
     groupCount: 0
   });
-  const [taskStats, setTaskStats] = useState<TaskStats>({
-    total: 0,
-    new: 0,
-    pending: 0,
-    reviewed: 0,
-    overdue: 0
-  });
+  const [teacherStats, setTeacherStats] = useState<TeacherStat[]>([]);
   const [organization, setOrganization] = useState<{ name: string; plan: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPlansModal, setShowPlansModal] = useState(false);
@@ -52,7 +46,7 @@ const AdminDashboardView: React.FC = () => {
       const res = await api.get('/admin/dashboard');
       const data = res.data?.data;
       if (data?.stats) setStats(data.stats);
-      if (data?.taskStats) setTaskStats(data.taskStats);
+      if (data?.teacherStats) setTeacherStats(data.teacherStats);
       if (data?.organization) setOrganization(data.organization);
     } catch (err) {
       toast.error(t('admin_stats_error'));
@@ -72,22 +66,6 @@ const AdminDashboardView: React.FC = () => {
     { labelKey: 'admin_parents', value: stats.parentCount, icon: 'family_restroom', color: 'bg-violet-500/10 text-violet-600' },
     { labelKey: 'nav_groups', value: stats.groupCount, icon: 'groups', color: 'bg-cyan-500/10 text-cyan-600' }
   ];
-
-  const taskChartItems = [
-    { labelKey: 'admin_tasks_total', value: taskStats.total, barBg: 'bg-slate-500', icon: 'assignment' },
-    { labelKey: 'admin_tasks_new', value: taskStats.new, barBg: 'bg-blue-500', icon: 'add_circle_outline' },
-    { labelKey: 'admin_tasks_pending', value: taskStats.pending, barBg: 'bg-amber-500', icon: 'schedule' },
-    { labelKey: 'admin_tasks_reviewed', value: taskStats.reviewed, barBg: 'bg-emerald-500', icon: 'check_circle' },
-    { labelKey: 'admin_tasks_overdue', value: taskStats.overdue, barBg: 'bg-red-500', icon: 'warning' }
-  ];
-  const taskChartMax = Math.max(
-    taskStats.total,
-    taskStats.new,
-    taskStats.pending,
-    taskStats.reviewed,
-    taskStats.overdue,
-    1
-  );
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -136,54 +114,83 @@ const AdminDashboardView: React.FC = () => {
         ))}
       </div>
 
-      {/* Vazifalar bo'yicha statistika — chart */}
+      {/* O'qituvchilar statistikasi — tekshirilgan va muddati o'tgan foizda */}
       <div className="mb-8 bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
         <div className="px-4 py-4 lg:px-6 lg:py-5 border-b border-slate-100 dark:border-border-dark">
           <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
-            {t('admin_tasks_stats_title')}
+            {t('admin_teacher_stats_title')}
           </h2>
           <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
-            {t('admin_tasks_chart_subtitle')}
+            {t('admin_teacher_stats_subtitle')}
           </p>
         </div>
         <div className="p-4 lg:p-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-12">
               <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
               <p className="mt-3 text-sm text-text-secondary-light dark:text-text-secondary-dark">{t('admin_loading')}</p>
             </div>
+          ) : teacherStats.length === 0 ? (
+            <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark text-center py-8">
+              {t('admin_teacher_stats_empty')}
+            </p>
           ) : (
-            <div className="space-y-5">
-              {taskChartItems.map((item, i) => {
-                const pct = taskChartMax > 0 ? (item.value / taskChartMax) * 100 : 0;
+            <div className="space-y-6">
+              {teacherStats.map((ts, i) => {
+                const total = ts.total || 0;
+                const reviewedPct = total > 0 ? Math.round((ts.reviewed / total) * 100) : 0;
+                const overduePct = total > 0 ? Math.round((ts.overdue / total) * 100) : 0;
                 return (
                   <motion.div
-                    key={item.labelKey}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    key={String(ts.teacherId)}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05, duration: 0.25 }}
-                    className="flex items-center gap-4"
+                    className="border border-slate-100 dark:border-border-dark rounded-xl p-4"
                   >
-                    <div className="flex items-center gap-2 min-w-[140px] sm:min-w-[160px]">
-                      <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl" title={t(item.labelKey)}>
-                        {item.icon}
-                      </span>
-                      <span className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark truncate">
-                        {t(item.labelKey)}
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">person</span>
+                      <span className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
+                        {ts.fullName || '—'}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center gap-3">
-                      <div className="flex-1 h-8 rounded-lg bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.max(pct, item.value > 0 ? 2 : 0)}%` }}
-                          transition={{ duration: 0.6, delay: i * 0.05 }}
-                          className={`h-full rounded-lg ${item.barBg} min-w-0`}
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">
+                            {t('admin_tasks_reviewed')}
+                          </span>
+                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            {reviewedPct}%
+                          </span>
+                        </div>
+                        <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(reviewedPct, 100)}%` }}
+                            transition={{ duration: 0.5, delay: i * 0.05 }}
+                            className="h-full rounded-full bg-emerald-500"
+                          />
+                        </div>
                       </div>
-                      <span className="text-sm font-bold text-text-primary-light dark:text-text-primary-dark tabular-nums w-10 text-right">
-                        {item.value}
-                      </span>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">
+                            {t('admin_tasks_overdue')}
+                          </span>
+                          <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
+                            {overduePct}%
+                          </span>
+                        </div>
+                        <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(overduePct, 100)}%` }}
+                            transition={{ duration: 0.5, delay: i * 0.05 }}
+                            className="h-full rounded-full bg-red-500"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 );

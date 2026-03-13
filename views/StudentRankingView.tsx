@@ -96,8 +96,10 @@ const StudentRankingView: React.FC = () => {
       } else {
         throw new Error(data.message || t('ranking_error_fetch'));
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('ranking_error_fetch'));
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      const msg = ax.response?.data?.message || (err instanceof Error ? err.message : t('ranking_error_fetch'));
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
